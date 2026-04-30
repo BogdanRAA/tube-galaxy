@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Artists — YouTube Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0a0a0a;
+      --card:       #141414;
+      --card-hover: #1a1a1a;
+      --border:     #222;
+      --border-dim: #1a1a1a;
+      --text:       #e0e0e0;
+      --text-dim:   #888;
+      --text-muted: #666;
+
+      --minimal:      #00e5ff;
+      --microhouse:   #76ff03;
+      --raw:          #ff1744;
+      --techno:       #d500f9;
+      --edm:          #ffea00;
+      --dance:        #ff9100;
+      --deephouse:    #448aff;
+      --progressive:  #b388ff;
+      --ambient:      #69f0ae;
+      --dnb:          #ff6e40;
+      --other-elec:   #8c9eff;
+      --non-elec:     #90a4ae;
+
+      --nav-h: 52px;
+      --tab-h: 52px;
+      --ctrl-h: 52px;
+      --radius: 10px;
+      --card-radius: 12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.4;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: var(--nav-h);
+      background: rgba(10,10,10,0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 24px;
+    }
+
+    .nav-logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-dim);
+      letter-spacing: -0.02em;
+      margin-right: 8px;
+      text-decoration: none;
+    }
+
+    .nav-divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      margin: 0 16px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+    }
+
+    .nav-link {
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-dim);
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.06); cursor: pointer; }
+    .nav-link.active {
+      color: var(--text);
+      background: rgba(255,255,255,0.08);
+      position: relative;
+    }
+    .nav-link.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 8px;
+      right: 8px;
+      height: 2px;
+      background: linear-gradient(90deg, #00e5ff, #d500f9);
+      border-radius: 2px;
+    }
+
+    .nav-spacer { flex: 1; }
+
+    .nav-count {
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+
+    /* ── TABS ── */
+    .tabs-wrap {
+      position: sticky;
+      top: var(--nav-h);
+      z-index: 90;
+      background: rgba(10,10,10,0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tabs-wrap::-webkit-scrollbar { display: none; }
+
+    .tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 24px;
+      height: var(--tab-h);
+      align-items: center;
+      min-width: max-content;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 14px;
+      height: 100%;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, background 0.15s;
+      white-space: nowrap;
+      position: relative;
+      letter-spacing: 0.01em;
+    }
+
+    .tab:hover { color: var(--text-dim); background: rgba(255,255,255,0.04); }
+
+    .tab.active {
+      color: var(--text);
+    }
+
+    .tab-count {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.07);
+      color: var(--text-muted);
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .tab.active .tab-count {
+      color: inherit;
+    }
+
+    /* ── CONTROLS ── */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border-dim);
+    }
+
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 360px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      padding: 8px 10px 8px 32px;
+      outline: none;
+      transition: border-color 0.15s;
+      font-family: inherit;
+    }
+
+    .search-input::placeholder { color: var(--text-muted); }
+    .search-input:focus { border-color: #555; box-shadow: 0 0 0 3px rgba(255,255,255,0.05); }
+
+    .controls-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
+    }
+
+    .sort-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .sort-select {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      padding: 7px 28px 7px 10px;
+      outline: none;
+      cursor: pointer;
+      font-family: inherit;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+
+    .sort-select:focus { border-color: #555; box-shadow: 0 0 0 3px rgba(255,255,255,0.05); }
+
+    /* ── MAIN ── */
+    main {
+      padding: 24px 24px 60px;
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .empty-icon {
+      font-size: 40px;
+      opacity: 0.5;
+    }
+
+    .empty-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    .empty-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      max-width: 340px;
+      line-height: 1.6;
+    }
+
+    .empty-code {
+      margin-top: 8px;
+      font-family: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 6px;
+    }
+
+    /* ── GRID ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 1100px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px)  { .grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 420px)  { .grid { grid-template-columns: 1fr; } }
+
+    /* ── ARTIST CARD ── */
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--card-radius);
+      overflow: hidden;
+      cursor: default;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+    }
+
+    .card-inner {
+      padding: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .avatar-wrap {
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--border);
+      display: block;
+    }
+
+    .avatar-fallback {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    .card-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .artist-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+      margin-bottom: 6px;
+      transition: color 0.15s;
+    }
+
+    .artist-name:hover { opacity: 0.85; }
+
+    .tags-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .genre-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid currentColor;
+      opacity: 0.9;
+      white-space: nowrap;
+    }
+
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-dim);
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .source-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    /* ── LATEST TRACK ── */
+    .latest-track {
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-dim);
+      border-radius: 7px;
+    }
+
+    .latest-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    .latest-title {
+      font-size: 12px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.4;
+    }
+
+    .latest-date {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── EXPAND TOGGLE ── */
+    .expand-btn {
+      width: 100%;
+      background: none;
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding: 9px 16px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: color 0.15s, background 0.15s;
+      font-family: inherit;
+    }
+
+    .expand-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+
+    .expand-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s;
+      font-style: normal;
+      font-size: 10px;
+      line-height: 1;
+    }
+
+    .expand-btn:hover .expand-icon { background: rgba(255,255,255,0.12); }
+
+    .card.expanded .expand-icon { transform: rotate(180deg); }
+
+    /* ── TRACKS PANEL ── */
+    .tracks-panel {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.3s ease;
+    }
+
+    .card.expanded .tracks-panel { max-height: 600px; }
+
+    .track-list {
+      padding: 0 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .track-item {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 8px;
+      border-radius: 7px;
+      text-decoration: none;
+      transition: background 0.12s;
+      border: 1px solid transparent;
+    }
+
+    .track-item:hover {
+      background: rgba(255,255,255,0.04);
+      border-color: var(--border-dim);
+    }
+
+    .track-thumb {
+      width: 44px;
+      height: 33px;
+      border-radius: 4px;
+      object-fit: cover;
+      background: var(--border);
+      flex-shrink: 0;
+      display: block;
+    }
+
+    .track-thumb-placeholder {
+      width: 44px;
+      height: 33px;
+      border-radius: 4px;
+      background: var(--border);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .track-info { flex: 1; min-width: 0; }
+
+    .track-title {
+      font-size: 12px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+      transition: text-decoration 0.12s;
+    }
+
+    .track-item:hover .track-title { text-decoration: underline; text-underline-offset: 2px; }
+
+    .track-date {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .track-play-icon {
+      color: var(--text-muted);
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.12s;
+      font-size: 12px;
+    }
+
+    .track-item:hover .track-play-icon { opacity: 1; }
+
+    /* ── NO-RESULTS ── */
+    .no-results {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .no-results-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--text-dim); }
+
+    /* ── LOADING ── */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      gap: 16px;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border);
+      border-top-color: var(--text-dim);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-animate {
+      animation: fadeUp 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    /* ── RESPONSIVE controls ── */
+    @media (max-width: 600px) {
+      .controls { flex-wrap: wrap; gap: 8px; }
+      .search-wrap { max-width: 100%; }
+      .controls-right { margin-left: 0; }
+      .sort-label { display: none; }
+    }
+
+    @media (max-width: 420px) {
+      nav { padding: 0 14px; }
+      .tabs { padding: 0 14px; }
+      .controls { padding: 10px 14px; }
+      main { padding: 14px 14px 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/index.html" class="nav-logo">YT</a>
+  <div class="nav-divider"></div>
+  <div class="nav-links">
+    <a href="/index.html" class="nav-link">Universe</a>
+    <a href="/music.html" class="nav-link active">Music</a>
+    <a href="/globe.html" class="nav-link">Globe</a>
+  </div>
+  <div class="nav-spacer"></div>
+  <span class="nav-count" id="total-count">— artists</span>
+</nav>
+
+<!-- TABS -->
+<div class="tabs-wrap">
+  <div class="tabs" id="tabs"></div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <div class="search-wrap">
+    <svg class="search-icon" width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <circle cx="6.5" cy="6.5" r="5.5" stroke="#555" stroke-width="1.5"/>
+      <path d="M11 11l3.5 3.5" stroke="#555" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <input type="text" class="search-input" id="search-input" placeholder="Search artists…" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="controls-right">
+    <span class="sort-label">Sort by</span>
+    <select class="sort-select" id="sort-select">
+      <option value="recent">Most recent release</option>
+      <option value="alpha">Alphabetical</option>
+      <option value="subgenre">Subgenre</option>
+    </select>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main>
+  <div id="app">
+    <div class="loading">
+      <div class="spinner"></div>
+      <span class="loading-text">Loading artists…</span>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────────────────
+const SUBGENRES = [
+  'Minimal', 'Micro House', 'Raw', 'Techno', 'EDM',
+  'Dance/Disco', 'Deep House', 'Progressive', 'Ambient',
+  'Drum & Bass', 'Other Electronic', 'Non-Electronic'
+];
+
+const COLORS = {
+  'Minimal':         '#00e5ff',
+  'Micro House':     '#76ff03',
+  'Raw':             '#ff1744',
+  'Techno':          '#d500f9',
+  'EDM':             '#ffea00',
+  'Dance/Disco':     '#ff9100',
+  'Deep House':      '#448aff',
+  'Progressive':     '#b388ff',
+  'Ambient':         '#69f0ae',
+  'Drum & Bass':     '#ff6e40',
+  'Other Electronic':'#8c9eff',
+  'Non-Electronic':  '#90a4ae',
+};
+
+const SOURCE_LABELS = {
+  'subscription':   'subscribed',
+  'playlist':       'playlist',
+  'liked':          'liked',
+  'playlist+liked': 'playlist + liked',
+};
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let allArtists = [];
+let filteredArtists = [];
+let activeTab = 'All';
+let sortMode = 'recent';
+let searchQuery = '';
+
+// ── UTILS ──────────────────────────────────────────────────────────────────
+function relativeTime(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isNaN(date)) return '';
+  const diff = Date.now() - date.getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h ago';
+  const d = Math.floor(h / 24);
+  if (d < 7) return d + 'd ago';
+  const w = Math.floor(d / 7);
+  if (w < 5) return w + 'w ago';
+  const mo = Math.floor(d / 30);
+  if (mo < 13) return mo + 'mo ago';
+  return Math.floor(d / 365) + 'y ago';
+}
+
+function initials(name) {
+  return name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
+}
+
+function colorHex(subgenre) {
+  return COLORS[subgenre] || '#8c9eff';
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── NORMALIZATION ──────────────────────────────────────────────────────────
+// The categorize.py output uses 'latest_tracks' as array of {title, video_id, published_at}
+// OR as plain strings from the subscription branch. Handle both.
+function normalizeArtist(raw) {
+  const tracks = (raw.latest_tracks || []).map(t => {
+    if (typeof t === 'string') {
+      return { title: t, video_id: '', published_at: '' };
+    }
+    return {
+      title:        t.title        || t.name || '',
+      video_id:     t.video_id     || t.videoId || '',
+      published_at: t.published_at || t.publishedAt || '',
+    };
+  });
+  return {
+    name:        raw.name        || raw.title || 'Unknown Artist',
+    subgenre:    raw.subgenre    || 'Other Electronic',
+    source:      raw.source      || 'subscription',
+    channel_id:  raw.channel_id  || raw.channelId || '',
+    thumbnail:   raw.thumbnail   || '',
+    description: raw.description || '',
+    tracks,
+  };
+}
+
+// ── SORTING ────────────────────────────────────────────────────────────────
+function mostRecentDate(artist) {
+  const dates = artist.tracks
+    .map(t => t.published_at ? new Date(t.published_at).getTime() : 0)
+    .filter(Boolean);
+  return dates.length ? Math.max(...dates) : 0;
+}
+
+function sortArtists(arr) {
+  const copy = [...arr];
+  if (sortMode === 'recent') {
+    copy.sort((a, b) => mostRecentDate(b) - mostRecentDate(a));
+  } else if (sortMode === 'alpha') {
+    copy.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sortMode === 'subgenre') {
+    copy.sort((a, b) => {
+      const si = SUBGENRES.indexOf(a.subgenre);
+      const sj = SUBGENRES.indexOf(b.subgenre);
+      const diff = (si === -1 ? 99 : si) - (sj === -1 ? 99 : sj);
+      return diff !== 0 ? diff : a.name.localeCompare(b.name);
+    });
+  }
+  return copy;
+}
+
+// ── FILTER ────────────────────────────────────────────────────────────────
+function applyFilters() {
+  let result = allArtists;
+
+  if (activeTab !== 'All') {
+    result = result.filter(a => a.subgenre === activeTab);
+  }
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    result = result.filter(a => a.name.toLowerCase().includes(q));
+  }
+
+  filteredArtists = sortArtists(result);
+}
+
+// ── RENDER TABS ────────────────────────────────────────────────────────────
+function renderTabs() {
+  const tabsEl = document.getElementById('tabs');
+  const counts = { All: allArtists.length };
+  for (const sg of SUBGENRES) {
+    counts[sg] = allArtists.filter(a => a.subgenre === sg).length;
+  }
+
+  const tabs = ['All', ...SUBGENRES.filter(sg => counts[sg] > 0)];
+  const color = activeTab !== 'All' ? colorHex(activeTab) : '#e0e0e0';
+
+  tabsEl.innerHTML = tabs.map(tab => {
+    const isActive = tab === activeTab;
+    const c = tab === 'All' ? '#e0e0e0' : colorHex(tab);
+    const style = isActive
+      ? `border-bottom-color:${c}; color:${c}; background:${hexToRgba(c, 0.08)};`
+      : '';
+    const badgeStyle = isActive
+      ? `background:${hexToRgba(c, 0.15)}; color:${c};`
+      : '';
+
+    return `
+      <button class="tab${isActive ? ' active' : ''}" data-tab="${escapeHtml(tab)}" style="${style}">
+        ${escapeHtml(tab)}
+        <span class="tab-count" style="${badgeStyle}">${counts[tab]}</span>
+      </button>
+    `;
+  }).join('');
+
+  tabsEl.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeTab = btn.dataset.tab;
+      applyFilters();
+      renderTabs();
+      renderGrid();
+    });
+  });
+}
+
+// ── RENDER GRID ────────────────────────────────────────────────────────────
+function renderGrid() {
+  const app = document.getElementById('app');
+
+  if (filteredArtists.length === 0) {
+    app.innerHTML = `
+      <div class="grid">
+        <div class="no-results">
+          <div class="no-results-title">No artists found</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+            ${searchQuery ? `No results for "${escapeHtml(searchQuery)}"` : 'No artists in this category'}
+          </div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const cardsHtml = filteredArtists.map(artist => renderCard(artist)).join('');
+  app.innerHTML = `<div class="grid">${cardsHtml}</div>`;
+
+  // Apply stagger delays programmatically
+  app.querySelectorAll('.card').forEach((card, i) => {
+    card.classList.add('card-animate');
+    card.style.animationDelay = `${Math.min(i * 0.035, 0.42)}s`;
+  });
+
+  // Attach expand toggle listeners
+  app.querySelectorAll('.expand-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const card = btn.closest('.card');
+      card.classList.toggle('expanded');
+      const icon = btn.querySelector('.expand-icon');
+      const label = btn.querySelector('.expand-label');
+      if (card.classList.contains('expanded')) {
+        label.textContent = 'Hide tracks';
+      } else {
+        label.textContent = 'Show tracks';
+      }
+    });
+  });
+
+  // Attach card hover glow
+  app.querySelectorAll('.card').forEach(card => {
+    const color = card.dataset.color;
+    card.addEventListener('mouseenter', () => {
+      card.style.borderColor = hexToRgba(color, 0.45);
+      card.style.boxShadow = `0 8px 32px ${hexToRgba(color, 0.12)}, 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)`;
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.borderColor = '';
+      card.style.boxShadow = '';
+    });
+  });
+}
+
+function renderCard(artist) {
+  const color = colorHex(artist.subgenre);
+  const channelHref = artist.channel_id
+    ? `https://www.youtube.com/channel/${escapeHtml(artist.channel_id)}`
+    : '#';
+  const nameTarget = artist.channel_id ? ' target="_blank" rel="noopener"' : '';
+
+  // Avatar
+  let avatarHtml;
+  if (artist.thumbnail) {
+    avatarHtml = `<img class="avatar" src="${escapeHtml(artist.thumbnail)}" alt="${escapeHtml(artist.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="avatar-fallback" style="display:none;background:${hexToRgba(color, 0.12)};color:${color}">${escapeHtml(initials(artist.name))}</div>`;
+  } else {
+    avatarHtml = `<div class="avatar-fallback" style="background:${hexToRgba(color, 0.12)};color:${color}">${escapeHtml(initials(artist.name))}</div>`;
+  }
+
+  // Source badge
+  const sourceLabel = SOURCE_LABELS[artist.source] || artist.source;
+  const sourceDotColor = artist.source === 'subscription' ? '#69f0ae'
+    : artist.source === 'liked' ? '#ff6e40'
+    : '#b388ff';
+
+  // Latest track
+  const firstTrack = artist.tracks[0];
+  let latestTrackHtml = '';
+  if (firstTrack && firstTrack.title) {
+    const relDate = firstTrack.published_at ? relativeTime(firstTrack.published_at) : '';
+    const trackHref = firstTrack.video_id
+      ? `https://www.youtube.com/watch?v=${escapeHtml(firstTrack.video_id)}`
+      : null;
+    const trackTitle = escapeHtml(firstTrack.title);
+    latestTrackHtml = `
+      <div class="latest-track">
+        <div class="latest-label">Latest</div>
+        <div class="latest-title">${trackHref ? `<a href="${trackHref}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none" onclick="event.stopPropagation()">${trackTitle}</a>` : trackTitle}</div>
+        ${relDate ? `<div class="latest-date">${escapeHtml(relDate)}</div>` : ''}
+      </div>`;
+  }
+
+  // Tracks panel (up to 5)
+  const tracksToShow = artist.tracks.slice(0, 5);
+  const MUSIC_NOTE_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
+  let tracksPanelHtml = '';
+  if (tracksToShow.length > 1) {
+    const trackItems = tracksToShow.map(t => {
+      const tHref = t.video_id ? `https://www.youtube.com/watch?v=${escapeHtml(t.video_id)}` : '#';
+      const tTitle = escapeHtml(t.title || 'Untitled');
+      const tDate = t.published_at ? relativeTime(t.published_at) : '';
+      const thumbSrc = t.video_id
+        ? `https://img.youtube.com/vi/${escapeHtml(t.video_id)}/mqdefault.jpg`
+        : null;
+      const thumbHtml = thumbSrc
+        ? `<img class="track-thumb" src="${thumbSrc}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="track-thumb-placeholder" style="display:none">${MUSIC_NOTE_SVG}</div>`
+        : `<div class="track-thumb-placeholder">${MUSIC_NOTE_SVG}</div>`;
+      return `
+        <a class="track-item" href="${tHref}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+          ${thumbHtml}
+          <div class="track-info">
+            <div class="track-title">${tTitle}</div>
+            ${tDate ? `<div class="track-date">${escapeHtml(tDate)}</div>` : ''}
+          </div>
+          <span class="track-play-icon">▶</span>
+        </a>`;
+    }).join('');
+
+    tracksPanelHtml = `
+      <div class="tracks-panel">
+        <div class="track-list">${trackItems}</div>
+      </div>`;
+  }
+
+  const expandBtn = tracksToShow.length > 1 ? `
+    <button class="expand-btn">
+      <i class="expand-icon">▾</i>
+      <span class="expand-label">Show tracks</span>
+    </button>` : '';
+
+  return `
+    <div class="card" data-color="${escapeHtml(color)}">
+      <div class="card-inner">
+        <div class="card-header">
+          <div class="avatar-wrap">${avatarHtml}</div>
+          <div class="card-meta">
+            <a class="artist-name"
+               href="${channelHref}"${nameTarget}
+               onclick="event.stopPropagation()"
+               title="${escapeHtml(artist.name)}">
+              ${escapeHtml(artist.name)}
+            </a>
+            <div class="tags-row">
+              <span class="genre-badge" style="color:${color};border-color:${hexToRgba(color,0.4)};background:${hexToRgba(color,0.07)};box-shadow:0 0 8px ${hexToRgba(color,0.25)}">
+                ${escapeHtml(artist.subgenre)}
+              </span>
+              <span class="source-badge">
+                <span class="source-dot" style="color:${sourceDotColor}"></span>
+                ${escapeHtml(sourceLabel)}
+              </span>
+            </div>
+          </div>
+        </div>
+        ${latestTrackHtml}
+      </div>
+      ${expandBtn}
+      ${tracksPanelHtml}
+    </div>`;
+}
+
+// ── UPDATE COUNTER ─────────────────────────────────────────────────────────
+function updateCounter() {
+  const el = document.getElementById('total-count');
+  const n = allArtists.length;
+  el.textContent = n === 1 ? '1 artist' : `${n} artists`;
+}
+
+// ── LOAD DATA ──────────────────────────────────────────────────────────────
+async function loadData() {
+  try {
+    const [artistsRes, subsRes] = await Promise.allSettled([
+      fetch('./data/music_artists.json'),
+      fetch('./data/categorized_subscriptions.json'),
+    ]);
+
+    if (artistsRes.status === 'rejected' || !artistsRes.value.ok) {
+      throw new Error('music_artists.json not found');
+    }
+
+    const raw = await artistsRes.value.json();
+    if (!Array.isArray(raw)) throw new Error('Unexpected data format');
+
+    // Build a lookup from categorized_subscriptions for thumbnails/descriptions
+    let subsMap = {};
+    if (subsRes.status === 'fulfilled' && subsRes.value.ok) {
+      try {
+        const subs = await subsRes.value.json();
+        if (Array.isArray(subs)) {
+          subs.forEach(s => {
+            if (s.channel_id) subsMap[s.channel_id] = s;
+          });
+        }
+      } catch (_) {}
+    }
+
+    // Normalize and enrich
+    allArtists = raw.map(r => {
+      const a = normalizeArtist(r);
+      // Fill thumbnail from subscriptions if missing
+      if (!a.thumbnail && a.channel_id && subsMap[a.channel_id]) {
+        a.thumbnail = subsMap[a.channel_id].thumbnail || '';
+      }
+      return a;
+    });
+
+    applyFilters();
+    renderTabs();
+    renderGrid();
+    updateCounter();
+
+  } catch (err) {
+    document.getElementById('app').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+        <div class="empty-title">No data yet</div>
+        <div class="empty-sub">
+          Run the extraction pipeline first to populate your music artist data.
+        </div>
+        <div class="empty-code">cd extract &amp;&amp; python youtube_extract.py &amp;&amp; python categorize.py</div>
+      </div>`;
+    document.getElementById('tabs').innerHTML = `<span class="tab active" style="color:var(--text-muted)">All <span class="tab-count">0</span></span>`;
+    document.getElementById('total-count').textContent = '0 artists';
+  }
+}
+
+// ── WIRE UP CONTROLS ───────────────────────────────────────────────────────
+document.getElementById('search-input').addEventListener('input', e => {
+  searchQuery = e.target.value.trim();
+  applyFilters();
+  renderGrid();
+});
+
+document.getElementById('sort-select').addEventListener('change', e => {
+  sortMode = e.target.value;
+  applyFilters();
+  renderGrid();
+});
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>

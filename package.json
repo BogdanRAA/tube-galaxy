@@ -1,0 +1,13 @@
+{
+  "name": "youtube-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal YouTube subscription dashboard with niche categorization, music artist tracking, and concert globe",
+  "scripts": {
+    "build": "node build.js",
+    "extract": "cd extract && python3 youtube_extract.py",
+    "categorize": "cd extract && python3 categorize.py",
+    "concerts": "cd extract && python3 concerts.py",
+    "pipeline": "npm run extract && npm run categorize && npm run concerts && npm run build"
+  }
+}

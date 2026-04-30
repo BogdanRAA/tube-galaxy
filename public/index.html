@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subscription Universe</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface-hover: #1a1a1a;
+    --border: #222;
+    --border-light: #2a2a2a;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --text-dim: #666;
+    --accent: #ff4444;
+    --accent-dim: rgba(255, 68, 68, 0.15);
+    --accent-glow: rgba(255, 68, 68, 0.08);
+    --sidebar-w: 240px;
+    --nav-h: 52px;
+    --radius: 8px;
+    --radius-sm: 5px;
+    --transition: 150ms ease;
+  }
+
+  html { font-size: 14px; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* ─── NAV ─────────────────────────────────── */
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--nav-h);
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 0;
+    z-index: 100;
+  }
+
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 32px;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+
+  .nav-brand-icon {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-brand-icon svg { width: 14px; height: 14px; fill: white; }
+
+  .nav-brand-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+  }
+
+  .nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color var(--transition), background var(--transition);
+    cursor: pointer;
+  }
+
+  .nav-link:hover { color: var(--text); background: var(--surface-hover); }
+
+  .nav-link.active {
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 1px;
+  }
+
+  .nav-link svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  .nav-meta {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .nav-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .nav-stat strong { color: var(--text); font-weight: 600; }
+
+  .nav-date {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ─── LAYOUT ──────────────────────────────── */
+  .layout {
+    display: flex;
+    padding-top: var(--nav-h);
+    min-height: 100vh;
+  }
+
+  /* ─── SIDEBAR ─────────────────────────────── */
+  .sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    position: sticky;
+    top: var(--nav-h);
+    height: calc(100vh - var(--nav-h));
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    padding: 16px 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 0 8px;
+    margin-bottom: 8px;
+    margin-top: 4px;
+  }
+
+  .niche-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition);
+    gap: 8px;
+    border: 1px solid transparent;
+    margin-bottom: 2px;
+  }
+
+  .niche-item:hover { background: var(--surface-hover); }
+
+  .niche-item.active {
+    background: var(--accent-dim);
+    border-color: rgba(255,68,68,0.2);
+    border-left: 2px solid var(--accent);
+  }
+
+  .niche-item.active .niche-name { color: var(--accent); }
+
+  .niche-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color var(--transition);
+    flex: 1;
+  }
+
+  .niche-item:hover .niche-name { color: var(--text); }
+
+  .niche-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    background: var(--border);
+    border-radius: 10px;
+    padding: 1px 7px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+    transition: background var(--transition), color var(--transition);
+  }
+
+  .niche-item.active .niche-badge {
+    background: rgba(255,68,68,0.25);
+    color: var(--accent);
+  }
+
+  .sidebar-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 10px 4px;
+  }
+
+  /* ─── MAIN ────────────────────────────────── */
+  .main {
+    flex: 1;
+    min-width: 0;
+    padding: 20px 24px;
+  }
+
+  /* ─── SEARCH ──────────────────────────────── */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0 14px;
+    margin-bottom: 20px;
+    transition: border-color var(--transition);
+  }
+
+  .search-bar:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(255,68,68,0.1);
+  }
+
+  .search-icon { color: var(--text-dim); flex-shrink: 0; }
+  .search-icon svg { display: block; width: 16px; height: 16px; }
+
+  .search-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 13.5px;
+    padding: 10px 0;
+    font-family: inherit;
+  }
+
+  .search-input::placeholder { color: var(--text-dim); }
+
+  .search-clear {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-dim);
+    padding: 4px;
+    border-radius: 4px;
+    display: none;
+    align-items: center;
+    transition: color var(--transition);
+  }
+
+  .search-clear:hover { color: var(--text-muted); }
+  .search-clear.visible { display: flex; }
+  .search-clear svg { width: 14px; height: 14px; }
+
+  /* ─── CONTENT HEADER ─────────────────────── */
+  .content-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .content-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  .content-count {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ─── GRID ────────────────────────────────── */
+  .channels-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  @media (max-width: 1100px) {
+    .channels-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 768px) {
+    .layout { flex-direction: column; }
+
+    .sidebar {
+      width: 100%;
+      position: static;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      overflow-y: visible;
+      flex-direction: row;
+      flex-wrap: nowrap;
+    }
+
+    .sidebar-label, .sidebar-sep { display: none; }
+
+    .niche-item { margin-bottom: 0; flex-shrink: 0; }
+
+    .main { padding: 16px; }
+
+    .channels-grid { grid-template-columns: 1fr; }
+
+    .nav-date, .nav-stat + .nav-stat { display: none; }
+  }
+
+  /* ─── CHANNEL CARD ────────────────────────── */
+  .channel-card {
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .channel-card:hover {
+    border-color: rgba(255,255,255,0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px 18px 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .channel-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--border);
+    border: 1.5px solid var(--border-light);
+  }
+
+  .channel-avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+    border: 1.5px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: -0.5px;
+  }
+
+  .channel-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  .channel-name-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px 8px;
+    margin: 0 0 6px;
+    flex-wrap: wrap;
+  }
+
+  .channel-name {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--text);
+    text-decoration: none;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    transition: color var(--transition);
+    cursor: pointer;
+  }
+
+  .channel-name:hover { color: var(--accent); }
+
+  .music-badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #b388ff;
+    background: rgba(179,136,255,0.1);
+    border-radius: 10px;
+    padding: 1px 6px;
+    letter-spacing: 0.02em;
+  }
+
+  .music-badge svg { width: 10px; height: 10px; }
+
+  .channel-sub-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .channel-subs {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .niche-tag {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-dim);
+    background: var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    letter-spacing: 0.02em;
+  }
+
+  .card-desc {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    padding: 4px 18px 18px;
+    line-height: 1.6;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    opacity: 0.75;
+  }
+
+  .card-expand-btn {
+    display: none;
+  }
+
+  /* ─── VIDEOS SECTION ──────────────────────── */
+  .card-videos {
+    border-top: 1px solid var(--border);
+    padding: 14px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    flex-shrink: 0;
+    flex-grow: 0;
+  }
+
+  .videos-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+
+  .video-item {
+    display: flex;
+    align-items: flex-start;
+    flex-shrink: 0;
+    gap: 10px;
+    padding: 7px 2px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: background var(--transition);
+    cursor: pointer;
+    max-height: 90px;
+    overflow: hidden;
+  }
+
+  .video-item:hover { background: rgba(255,255,255,0.03); }
+
+  .video-thumb-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 104px;
+    height: 58px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--border);
+  }
+
+  .video-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .video-thumb-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1a1a 0%, #222 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .video-thumb-placeholder svg { width: 22px; height: 22px; opacity: 0.3; }
+
+  .video-play-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.3);
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  .video-item:hover .video-play-overlay { opacity: 1; }
+
+  .video-play-overlay svg { width: 24px; height: 24px; fill: white; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5)); }
+
+  .video-meta { flex: 1; min-width: 0; padding-top: 1px; }
+
+  .video-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+
+  .video-date {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* Collapsed: show only 3 videos */
+  .card-videos.collapsed .video-item:nth-child(n+5) { display: none; }
+
+  .show-more-btn {
+    margin-top: 6px;
+    margin-bottom: 2px;
+    padding: 5px 8px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-dim);
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+    transition: background var(--transition), color var(--transition), border-color var(--transition);
+    font-family: inherit;
+  }
+
+  .show-more-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-muted);
+    border-color: var(--border-light);
+  }
+
+  .no-videos {
+    font-size: 12px;
+    color: var(--text-dim);
+    padding: 6px 2px 2px;
+    font-style: italic;
+  }
+
+  /* ─── EMPTY + ERROR STATES ────────────────── */
+  .state-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-dim);
+  }
+
+  .state-message h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+
+  .state-message p {
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 480px;
+    margin: 0 auto 16px;
+  }
+
+  .state-message code {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-family: 'SF Mono', 'Monaco', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    display: inline-block;
+    margin-top: 6px;
+  }
+
+  /* ─── LOADING ─────────────────────────────── */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 200;
+    transition: opacity 400ms ease;
+  }
+
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; display: none; }
+
+  .spinner {
+    width: 36px; height: 36px;
+    border: 2.5px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+
+  /* ─── FILTER ANIMATION ────────────────────── */
+  .channel-card {
+    animation: fadeIn 200ms ease both;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .channel-card.filtered-out {
+    display: none;
+  }
+
+  /* ─── SCROLLBAR ───────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Loading subscriptions...</div>
+</div>
+
+<!-- Nav -->
+<nav class="nav">
+  <a class="nav-brand" href="index.html">
+    <div class="nav-brand-icon">
+      <svg viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+    </div>
+    <span class="nav-brand-text">Subscription Universe</span>
+  </a>
+
+  <div class="nav-links">
+    <a class="nav-link active" href="index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+      Universe
+    </a>
+    <a class="nav-link" href="music.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      Music
+    </a>
+    <a class="nav-link" href="globe.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      Globe
+    </a>
+  </div>
+
+  <div class="nav-meta">
+    <div class="nav-stat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <strong id="navSubCount">—</strong> subscriptions
+    </div>
+    <div class="nav-date" id="navExtractDate">—</div>
+  </div>
+</nav>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-label">Niches</div>
+    <div id="nicheList">
+      <!-- populated by JS -->
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="search-bar">
+      <span class="search-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input class="search-input" type="text" id="searchInput" placeholder="Search channels..." autocomplete="off" spellcheck="false">
+      <button class="search-clear" id="searchClear" title="Clear search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="content-header">
+      <span class="content-title" id="contentTitle">All Channels</span>
+      <span class="content-count" id="contentCount"></span>
+    </div>
+
+    <div class="channels-grid" id="channelsGrid">
+      <!-- populated by JS -->
+    </div>
+  </main>
+
+</div>
+
+<script>
+// ─── UTILITIES ──────────────────────────────────────────────────────────────
+
+function formatSubs(n) {
+  const num = parseInt(n, 10);
+  if (isNaN(num)) return '—';
+  if (num >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
+  if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+  return num.toLocaleString();
+}
+
+function relativeTime(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isNaN(date)) return '';
+  const now = Date.now();
+  const diff = Math.floor((now - date) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) { const m = Math.floor(diff / 60); return m + 'm ago'; }
+  if (diff < 86400) { const h = Math.floor(diff / 3600); return h + 'h ago'; }
+  if (diff < 86400 * 7) { const d = Math.floor(diff / 86400); return d + 'd ago'; }
+  if (diff < 86400 * 30) { const w = Math.floor(diff / (86400 * 7)); return w + 'w ago'; }
+  if (diff < 86400 * 365) { const mo = Math.floor(diff / (86400 * 30)); return mo + 'mo ago'; }
+  const y = Math.floor(diff / (86400 * 365));
+  return y + 'y ago';
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'short', year: 'numeric'
+    });
+  } catch { return ''; }
+}
+
+function avatarInitial(title) {
+  return title ? title.trim()[0] : '?';
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ─── ICONS ──────────────────────────────────────────────────────────────────
+
+const ICON_PLAY = `<svg viewBox="0 0 24 24"><path fill="white" d="M8 5v14l11-7z"/></svg>`;
+const ICON_VIDEO_PLACEHOLDER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>`;
+const ICON_MUSIC = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V5l12-2v13M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm12-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>`;
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+
+let allChannels = [];
+let latestVideos = {};
+let nicheSummary = {};
+let activeNiche = 'all';
+let searchQuery = '';
+
+// ─── DATA LOADING ────────────────────────────────────────────────────────────
+
+async function loadJSON(path) {
+  const resp = await fetch(path);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${path}`);
+  return resp.json();
+}
+
+async function loadData() {
+  const loading = document.getElementById('loadingOverlay');
+  const loadingText = document.getElementById('loadingText');
+
+  try {
+    loadingText.textContent = 'Loading subscriptions...';
+    const [subs, videos, summary, meta] = await Promise.all([
+      loadJSON('./data/categorized_subscriptions.json').catch(() => null),
+      loadJSON('./data/latest_videos.json').catch(() => ({})),
+      loadJSON('./data/niche_summary.json').catch(() => ({})),
+      loadJSON('./data/meta.json').catch(() => null),
+    ]);
+
+    if (!subs || !Array.isArray(subs) || subs.length === 0) {
+      showError();
+      loading.classList.add('hidden');
+      return;
+    }
+
+    allChannels = subs;
+    latestVideos = videos || {};
+    nicheSummary = summary && summary.niches ? summary.niches : buildNicheSummaryLocal(subs);
+
+    // Nav meta
+    document.getElementById('navSubCount').textContent = subs.length.toLocaleString();
+    if (meta && meta.extracted_at) {
+      document.getElementById('navExtractDate').textContent =
+        'Updated ' + formatDate(meta.extracted_at);
+    }
+
+    buildSidebar();
+    renderChannels();
+
+    loading.classList.add('hidden');
+  } catch (err) {
+    console.error('Load error:', err);
+    showError();
+    loading.classList.add('hidden');
+  }
+}
+
+function buildNicheSummaryLocal(subs) {
+  const map = {};
+  subs.forEach(s => {
+    const n = s.niche || 'Other';
+    if (!map[n]) map[n] = { count: 0, channels: [] };
+    map[n].count++;
+    map[n].channels.push(s.channel_id);
+  });
+  return map;
+}
+
+function showError() {
+  const grid = document.getElementById('channelsGrid');
+  grid.innerHTML = `
+    <div class="state-message">
+      <h3>No data found</h3>
+      <p>The extraction pipeline hasn't run yet. Generate your subscription data first:</p>
+      <code>python3 extract/youtube_extract.py</code>
+      <br><br>
+      <p style="margin-top:8px;">Then categorize with Gemini:</p>
+      <code>python3 extract/categorize.py</code>
+    </div>`;
+  document.getElementById('sidebar').innerHTML =
+    '<div class="sidebar-label" style="padding:8px;">No data</div>';
+  document.getElementById('navSubCount').textContent = '0';
+}
+
+// ─── SIDEBAR ─────────────────────────────────────────────────────────────────
+
+function buildSidebar() {
+  const niches = Object.keys(nicheSummary).sort((a, b) =>
+    nicheSummary[b].count - nicheSummary[a].count
+  );
+
+  const list = document.getElementById('nicheList');
+  let html = `
+    <div class="niche-item active" data-niche="all" onclick="selectNiche('all')">
+      <span class="niche-name">All</span>
+      <span class="niche-badge">${allChannels.length}</span>
+    </div>
+    <div class="sidebar-sep"></div>
+  `;
+
+  niches.forEach(niche => {
+    const count = nicheSummary[niche].count;
+    html += `
+      <div class="niche-item" data-niche="${escHtml(niche)}" onclick='selectNiche(${JSON.stringify(niche)})'>
+        <span class="niche-name">${escHtml(niche)}</span>
+        <span class="niche-badge">${count}</span>
+      </div>`;
+  });
+
+  list.innerHTML = html;
+}
+
+function selectNiche(niche) {
+  activeNiche = niche;
+  searchQuery = '';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.remove('visible');
+
+  document.querySelectorAll('.niche-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.niche === niche);
+  });
+
+  renderChannels();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+
+function renderChannels() {
+  const grid = document.getElementById('channelsGrid');
+  const title = document.getElementById('contentTitle');
+  const count = document.getElementById('contentCount');
+
+  const q = searchQuery.toLowerCase().trim();
+
+  let filtered = allChannels.filter(ch => {
+    const matchNiche = activeNiche === 'all' || ch.niche === activeNiche;
+    if (!matchNiche) return false;
+    if (!q) return true;
+    return (
+      (ch.title || '').toLowerCase().includes(q) ||
+      (ch.description || '').toLowerCase().includes(q) ||
+      (ch.niche || '').toLowerCase().includes(q)
+    );
+  });
+
+  // Stable sort: music artists first within niche, then alphabetical
+  filtered.sort((a, b) => {
+    if (a.is_music_artist !== b.is_music_artist) return a.is_music_artist ? -1 : 1;
+    return (a.title || '').localeCompare(b.title || '');
+  });
+
+  title.textContent = activeNiche === 'all' ? 'All Channels' : activeNiche;
+  count.textContent = filtered.length > 0 ? `${filtered.length} channel${filtered.length !== 1 ? 's' : ''}` : '';
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div class="state-message">
+        <h3>${q ? 'No results' : 'No channels'}</h3>
+        <p>${q ? `Nothing matched "${escHtml(q)}". Try a different search.` : 'No channels in this niche.'}</p>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(ch => buildCard(ch)).join('');
+
+  // Stagger entrance animation — cap delay at 500ms
+  grid.querySelectorAll('.channel-card').forEach((card, i) => {
+    const delay = Math.min(i * 30, 500);
+    card.style.animation = `fadeSlideUp 0.3s ease forwards`;
+    card.style.animationDelay = `${delay}ms`;
+    card.style.opacity = '0';
+  });
+}
+
+function buildCard(ch) {
+  const videos = latestVideos[ch.channel_id] || [];
+  const hasVideos = videos.length > 0;
+  const channelUrl = ch.channel_id
+    ? `https://www.youtube.com/channel/${ch.channel_id}`
+    : '#';
+
+  const avatarHtml = ch.thumbnail
+    ? `<img class="channel-avatar" src="${escHtml(ch.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      + `<div class="channel-avatar-placeholder" style="display:none">${escHtml(avatarInitial(ch.title))}</div>`
+    : `<div class="channel-avatar-placeholder">${escHtml(avatarInitial(ch.title))}</div>`;
+
+  const musicBadge = ch.is_music_artist
+    ? `<span class="music-badge">${ICON_MUSIC} music</span>`
+    : '';
+
+  const desc = (ch.description || '').trim();
+
+  // Videos — always render all, JS collapses to 3
+  let videosHtml = '';
+  if (hasVideos) {
+    const items = videos.map(v => {
+      const watchUrl = v.video_id ? `https://www.youtube.com/watch?v=${escHtml(v.video_id)}` : '#';
+      const thumbHtml = v.thumbnail
+        ? `<img class="video-thumb" src="${escHtml(v.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+          + `<div class="video-thumb-placeholder" style="display:none">${ICON_VIDEO_PLACEHOLDER}</div>`
+        : `<div class="video-thumb-placeholder">${ICON_VIDEO_PLACEHOLDER}</div>`;
+
+      return `
+        <a class="video-item" href="${watchUrl}" target="_blank" rel="noopener">
+          <div class="video-thumb-wrap">
+            ${thumbHtml}
+            <div class="video-play-overlay">${ICON_PLAY}</div>
+          </div>
+          <div class="video-meta">
+            <div class="video-title">${escHtml(v.title || 'Untitled')}</div>
+            <div class="video-date">${relativeTime(v.published_at)}</div>
+          </div>
+        </a>`;
+    }).join('');
+
+    const hasMore = videos.length > 3;
+    const moreBtn = hasMore
+      ? `<button class="show-more-btn" onclick="toggleExpand(this, ${videos.length})">Show ${videos.length - 3} more</button>`
+      : '';
+
+    videosHtml = `
+      <div class="card-videos collapsed" id="videos-${escHtml(ch.channel_id)}">
+        <div class="videos-label">Latest</div>
+        ${items}
+        ${moreBtn}
+      </div>`;
+  }
+
+  return `
+    <div class="channel-card" data-channel-id="${escHtml(ch.channel_id)}">
+      <div class="card-header" onclick="toggleCardVideos(this, event)">
+        ${avatarHtml}
+        <div class="channel-info">
+          <div class="channel-name-row">
+            <a class="channel-name" href="${channelUrl}" target="_blank" rel="noopener"
+               title="${escHtml(ch.title || '')}">${escHtml(ch.title || 'Unknown')}</a>
+            ${musicBadge}
+          </div>
+          <div class="channel-sub-row">
+            <span class="channel-subs">${formatSubs(ch.subscriber_count)} subscribers</span>
+            ${activeNiche === 'all' && ch.niche ? `<span class="niche-tag">${escHtml(ch.niche)}</span>` : ''}
+          </div>
+        </div>
+      </div>
+      ${desc ? `<div class="card-desc">${escHtml(desc)}</div>` : ''}
+      ${videosHtml}
+    </div>`;
+}
+
+function toggleCardVideos(header, event) {
+  // Don't toggle if user clicked on a link (channel name)
+  if (event.target.closest('a')) return;
+  const card = header.closest('.channel-card');
+  const videosEl = card.querySelector('.card-videos');
+  if (!videosEl) return;
+  const isCollapsed = videosEl.classList.contains('collapsed');
+  if (isCollapsed) {
+    videosEl.classList.remove('collapsed');
+    const btn = videosEl.querySelector('.show-more-btn');
+    if (btn) btn.textContent = 'Show less';
+  } else {
+    videosEl.classList.add('collapsed');
+    const btn = videosEl.querySelector('.show-more-btn');
+    const total = videosEl.querySelectorAll('.video-item').length;
+    if (btn) btn.textContent = `Show ${total - 3} more`;
+  }
+}
+
+function toggleExpand(btn, total) {
+  const videosEl = btn.closest('.card-videos');
+  const isCollapsed = videosEl.classList.contains('collapsed');
+
+  if (isCollapsed) {
+    videosEl.classList.remove('collapsed');
+    btn.textContent = 'Show less';
+  } else {
+    videosEl.classList.add('collapsed');
+    btn.textContent = `Show ${total - 3} more`;
+    // Scroll card back into view gently
+    const card = btn.closest('.channel-card');
+    if (card) {
+      const rect = card.getBoundingClientRect();
+      if (rect.top < 60) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+}
+
+// ─── SEARCH ──────────────────────────────────────────────────────────────────
+
+let searchTimer = null;
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchQuery = e.target.value;
+  document.getElementById('searchClear').classList.toggle('visible', searchQuery.length > 0);
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(renderChannels, 180);
+});
+
+document.getElementById('searchClear').addEventListener('click', () => {
+  searchQuery = '';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.remove('visible');
+  document.getElementById('searchInput').focus();
+  renderChannels();
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+
+loadData();
+</script>
+</body>
+</html>

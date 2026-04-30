@@ -1,0 +1,7 @@
+{
+  "buildCommand": "node build.js",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/data/(.*)", "destination": "/data/$1" }
+  ]
+}

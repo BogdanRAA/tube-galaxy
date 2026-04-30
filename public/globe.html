@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Concert Globe</title>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0a;
+      --surface:   #141414;
+      --surface2:  #1a1a1a;
+      --border:    #222;
+      --border2:   #2a2a2a;
+      --text:      #e0e0e0;
+      --text-dim:  #888;
+      --text-mute: #555;
+
+      /* Subgenre palette */
+      --minimal:     #00e5ff;
+      --microhouse:  #76ff03;
+      --raw:         #ff1744;
+      --techno:      #d500f9;
+      --edm:         #ffea00;
+      --dancedisco:  #ff9100;
+      --deephouse:   #448aff;
+      --progressive: #b388ff;
+      --ambient:     #69f0ae;
+      --drumandbass: #ff6e40;
+      --default:     #607d8b;
+
+      --nav-h: 52px;
+      --list-pct: 35vh;
+      --globe-pct: 65vh;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    /* ── Navigation ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: rgba(10,10,10,0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 4px;
+      z-index: 200;
+    }
+
+    .nav-logo {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-right: 12px;
+    }
+
+    .nav-logo span {
+      background: linear-gradient(135deg, #b388ff 0%, #00e5ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    nav a:hover { color: var(--text); background: var(--surface2); }
+
+    nav a.active {
+      color: #fff;
+      background: var(--surface2);
+      border: 1px solid #3a3a3a;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset;
+      position: relative;
+    }
+
+    nav a.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60%;
+      height: 2px;
+      background: linear-gradient(90deg, #b388ff, #00e5ff);
+      border-radius: 2px 2px 0 0;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      position: fixed;
+      top: var(--nav-h);
+      left: 0; right: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Event List Panel ── */
+    .list-panel {
+      height: var(--list-pct);
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .list-header {
+      padding: 12px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+
+    .list-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .list-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .event-count {
+      font-size: 12px;
+      color: var(--text-mute);
+    }
+
+    .event-count strong {
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    /* ── Filter Bar ── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .filter-bar::-webkit-scrollbar { display: none; }
+
+    .filter-label {
+      font-size: 11px;
+      color: var(--text-mute);
+      flex-shrink: 0;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .pill-group {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border2);
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+
+    .pill:hover {
+      border-color: #444;
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    .pill.active {
+      background: var(--surface2);
+      color: var(--text);
+      border-color: #3a3a3a;
+      box-shadow: 0 0 12px rgba(var(--genre-rgb, 179, 136, 255), 0.4);
+    }
+
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .divider-v {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    /* ── Event Rows ── */
+    .event-list {
+      flex: 1;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #2a2a2a transparent;
+    }
+
+    .event-list::-webkit-scrollbar { width: 4px; }
+    .event-list::-webkit-scrollbar-track { background: transparent; }
+    .event-list::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+    .event-row {
+      display: grid;
+      grid-template-columns: 72px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.15s, transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+      position: relative;
+      background: rgba(20,20,20,0.8);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      margin-bottom: 1px;
+    }
+
+    .event-row::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: transparent;
+      transition: background 0.15s;
+    }
+
+    .event-row:hover {
+      background: rgba(26,26,26,0.9);
+      transform: translateX(4px);
+      border-color: rgba(255,255,255,0.1);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .event-row:hover::before { background: var(--row-accent, #444); }
+
+    .event-row.highlighted {
+      background: rgba(255,255,255,0.04);
+    }
+
+    .event-row.highlighted::before {
+      background: var(--row-accent, #607d8b) !important;
+    }
+
+    .event-date-col {
+      text-align: right;
+    }
+
+    .event-date {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .event-time {
+      font-size: 10px;
+      color: var(--text-mute);
+      margin-top: 1px;
+    }
+
+    .event-main {
+      min-width: 0;
+    }
+
+    .event-artist-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+
+    .event-artist {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .subgenre-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex-shrink: 0;
+      opacity: 0.85;
+    }
+
+    .event-venue-line {
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .event-venue-line .flag {
+      margin-right: 3px;
+    }
+
+    .event-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .event-price {
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .ticket-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: all 0.15s;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .ticket-btn:hover {
+      background: rgba(255,255,255,0.15);
+      border-color: rgba(255,255,255,0.22);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    /* ── Globe Panel ── */
+    .globe-panel {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    #globe-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    #globe-container::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 40%, rgba(10,10,10,0.6) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Globe popup */
+    .globe-popup {
+      position: absolute;
+      background: rgba(14,14,14,0.95);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 12px 14px;
+      min-width: 220px;
+      max-width: 280px;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.18s, transform 0.18s;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+
+    .globe-popup.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .popup-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .popup-accent-bar {
+      width: 3px;
+      border-radius: 2px;
+      min-height: 40px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .popup-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .popup-artist {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    .popup-meta {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 3px;
+      font-size: 11px;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+
+    .popup-meta-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .popup-meta-icon {
+      flex-shrink: 0;
+      color: var(--text-mute);
+      width: 12px;
+      text-align: center;
+      margin-top: 1px;
+    }
+
+    .popup-count-badge {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 2px 8px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 10px;
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+
+    /* Globe hint */
+    .globe-hint {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      color: var(--text-mute);
+      background: rgba(10,10,10,0.7);
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    /* ── Empty / Error State ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      height: 100%;
+      color: var(--text-mute);
+      font-size: 13px;
+      text-align: center;
+      padding: 32px 24px;
+    }
+
+    .empty-state-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+
+    .empty-state-icon svg {
+      opacity: 0.25;
+    }
+
+    .empty-state-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: -0.01em;
+    }
+
+    .empty-state-sub {
+      font-size: 12px;
+      color: var(--text-mute);
+      max-width: 220px;
+      line-height: 1.5;
+    }
+
+    .empty-state code {
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 11px;
+      background: rgba(255,255,255,0.04);
+      padding: 6px 14px;
+      border-radius: 6px;
+      color: #b388ff;
+      border: 1px solid rgba(179,136,255,0.18);
+      letter-spacing: 0.01em;
+    }
+
+    /* ── Loading ── */
+    .loading-bar {
+      position: absolute;
+      top: 0; left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #b388ff, #00e5ff);
+      animation: loadbar 1.4s ease-in-out infinite;
+      z-index: 300;
+    }
+
+    @keyframes loadbar {
+      0%   { width: 0%; opacity: 1; }
+      50%  { width: 70%; opacity: 1; }
+      100% { width: 100%; opacity: 0; }
+    }
+
+    /* ── Responsive Mobile ── */
+    @media (max-width: 767px) {
+      :root {
+        --list-pct: 50vh;
+        --globe-pct: 50vh;
+      }
+
+      .layout {
+        overflow-y: auto;
+        overflow-x: hidden;
+        position: relative;
+        top: var(--nav-h);
+        height: auto;
+        min-height: calc(100vh - var(--nav-h));
+      }
+
+      html, body { overflow: auto; }
+
+      .list-panel { height: 50vh; }
+      .globe-panel { height: 50vh; flex: none; }
+
+      .event-row { grid-template-columns: 62px 1fr; }
+      .event-right { display: none; }
+    }
+
+    /* ── Pulse animation for hovered pin ── */
+    @keyframes pin-pulse {
+      0%   { transform: scale(1); opacity: 1; }
+      50%  { transform: scale(1.5); opacity: 0.5; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── Grain texture overlay ── */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.4;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading bar -->
+  <div class="loading-bar" id="loading-bar" style="display:none"></div>
+
+  <!-- Navigation -->
+  <nav role="navigation" aria-label="Main navigation">
+    <div class="nav-logo" aria-label="PULSE"><span aria-hidden="true">◉</span> PULSE</div>
+    <a href="/index.html" aria-label="Universe page">Universe</a>
+    <a href="/music.html" aria-label="Music page">Music</a>
+    <a href="/globe.html" class="active" aria-label="Concert Globe — current page" aria-current="page">Globe</a>
+  </nav>
+
+  <!-- Layout -->
+  <div class="layout">
+
+    <!-- ── Event List Panel ── -->
+    <div class="list-panel">
+      <div class="list-header">
+        <div class="list-header-top">
+          <span class="list-title">Upcoming Concerts</span>
+          <span class="event-count" id="event-count">Loading…</span>
+        </div>
+        <div class="filter-bar" id="filter-bar">
+          <!-- filled by JS -->
+        </div>
+      </div>
+      <div class="event-list" id="event-list">
+        <div class="empty-state" id="list-empty" style="display:none">
+          <div class="empty-state-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10A15.3 15.3 0 0 1 8 12a15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+          </div>
+          <div class="empty-state-title" id="empty-msg">No concert data yet</div>
+          <div class="empty-state-sub" id="empty-sub" style="display:none">Extract concerts first to see events on the globe.</div>
+          <code id="empty-hint" style="display:none">python3 extract/concerts.py</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Globe Panel ── -->
+    <div class="globe-panel">
+      <div id="globe-container"></div>
+      <div class="globe-popup" id="globe-popup"></div>
+      <div class="globe-hint" id="globe-hint">Click pin to jump to event · Double-click globe to reset</div>
+    </div>
+
+  </div>
+
+  <!-- Globe.gl -->
+  <script src="https://unpkg.com/globe.gl@2.30.0/dist/globe.gl.min.js"></script>
+
+  <script>
+  // ─────────────────────────────────────────────
+  //  CONSTANTS
+  // ─────────────────────────────────────────────
+  const SUBGENRE_COLORS = {
+    'Minimal':     '#00e5ff',
+    'Micro House': '#76ff03',
+    'Raw':         '#ff1744',
+    'Techno':      '#d500f9',
+    'EDM':         '#ffea00',
+    'Dance/Disco': '#ff9100',
+    'Deep House':  '#448aff',
+    'Progressive': '#b388ff',
+    'Ambient':     '#69f0ae',
+    'Drum & Bass': '#ff6e40',
+  };
+
+  function genreColor(g) {
+    if (!g) return '#607d8b';
+    for (const [k, v] of Object.entries(SUBGENRE_COLORS)) {
+      if (g.toLowerCase().includes(k.toLowerCase())) return v;
+    }
+    return '#607d8b';
+  }
+
+  // Country code → flag emoji
+  function countryFlag(cc) {
+    if (!cc || cc.length !== 2) return '';
+    const offset = 127397;
+    return String.fromCodePoint(cc.charCodeAt(0) + offset)
+         + String.fromCodePoint(cc.charCodeAt(1) + offset);
+  }
+
+  // Format date: "2026-05-15" → "Sat, May 15"
+  function fmtDate(d) {
+    if (!d) return '—';
+    const dt = new Date(d + 'T00:00:00');
+    if (isNaN(dt)) return d;
+    return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  // Format time: "22:00:00" → "22:00"
+  function fmtTime(t) {
+    if (!t) return '';
+    return t.slice(0, 5);
+  }
+
+  // Price string
+  function fmtPrice(p) {
+    if (!p || (!p.min && !p.max)) return '';
+    const cur = p.currency || '';
+    if (p.min && p.max && p.min !== p.max) return `${cur} ${p.min}–${p.max}`;
+    if (p.min) return `From ${cur} ${p.min}`;
+    if (p.max) return `Up to ${cur} ${p.max}`;
+    return '';
+  }
+
+  // ─────────────────────────────────────────────
+  //  STATE
+  // ─────────────────────────────────────────────
+  let allEvents = [];
+  let filteredEvents = [];
+  let activeGenre = 'all';
+  let activeRange = 'all';
+  let loadFailed = false;
+  let globe = null;
+  let globeReady = false;
+  let rotationTimer = null;
+  let userInteracting = false;
+  let highlightedEventId = null;
+
+  // ─────────────────────────────────────────────
+  //  DATE RANGE FILTER
+  // ─────────────────────────────────────────────
+  function getDateBoundary(range) {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    if (range === 'week')  { const d = new Date(now); d.setDate(d.getDate() + 7); return d; }
+    if (range === 'month') { const d = new Date(now); d.setMonth(d.getMonth() + 1); return d; }
+    if (range === '3months') { const d = new Date(now); d.setMonth(d.getMonth() + 3); return d; }
+    return null; // 'all'
+  }
+
+  function isInRange(event, range) {
+    if (range === 'all') return true;
+    if (!event.date) return false;
+    const evtDate = new Date(event.date + 'T00:00:00');
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const bound = getDateBoundary(range);
+    return evtDate >= now && evtDate <= bound;
+  }
+
+  // ─────────────────────────────────────────────
+  //  FILTER & RENDER
+  // ─────────────────────────────────────────────
+  function applyFilters() {
+    filteredEvents = allEvents.filter(e => {
+      const genreMatch = activeGenre === 'all' || (e.artist_subgenre || '').toLowerCase() === activeGenre.toLowerCase();
+      return genreMatch && isInRange(e, activeRange);
+    });
+    renderList();
+    if (globeReady) updateGlobe();
+    updateCount();
+  }
+
+  function updateCount() {
+    const total = filteredEvents.length;
+    if (!total) {
+      document.getElementById('event-count').textContent = 'No events';
+      return;
+    }
+    // date range label
+    const dates = filteredEvents.map(e => e.date).filter(Boolean).sort();
+    const first = dates[0] ? fmtDate(dates[0]) : '';
+    const last  = dates[dates.length - 1] ? fmtDate(dates[dates.length - 1]) : '';
+    const range = (first && last && first !== last) ? `${first} – ${last}` : first;
+    document.getElementById('event-count').innerHTML =
+      `<strong>${total}</strong> event${total !== 1 ? 's' : ''}${range ? ` · ${range}` : ''}`;
+  }
+
+  // ─────────────────────────────────────────────
+  //  RENDER EVENT LIST
+  // ─────────────────────────────────────────────
+  function renderList() {
+    const container = document.getElementById('event-list');
+    const empty = document.getElementById('list-empty');
+
+    // Remove old rows (keep empty state)
+    container.querySelectorAll('.event-row').forEach(r => r.remove());
+
+    if (!filteredEvents.length) {
+      empty.style.display = 'flex';
+      document.getElementById('empty-msg').textContent = 'No concerts found for current filters.';
+      document.getElementById('empty-hint').style.display = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+
+    const fragment = document.createDocumentFragment();
+
+    filteredEvents.forEach((evt, idx) => {
+      const color = genreColor(evt.artist_subgenre);
+      const flag  = countryFlag(evt.country_code);
+      const price = fmtPrice(evt.price);
+      const venue = [evt.venue_name, evt.city].filter(Boolean).join(', ');
+
+      const row = document.createElement('div');
+      row.className = 'event-row';
+      row.dataset.eventId = evt.event_id || idx;
+      row.dataset.idx = idx;
+      row.style.setProperty('--row-accent', color);
+
+      // Subgenre pill background (semi-transparent)
+      const pillBg = color + '22';
+      const pillColor = color;
+
+      row.innerHTML = `
+        <div class="event-date-col">
+          <div class="event-date">${fmtDate(evt.date)}</div>
+          <div class="event-time">${fmtTime(evt.time)}</div>
+        </div>
+        <div class="event-main">
+          <div class="event-artist-line">
+            <span class="event-artist">${escHtml(evt.searched_artist || evt.name || '—')}</span>
+            ${evt.artist_subgenre ? `<span class="subgenre-pill" style="background:${pillBg};color:${pillColor};border:1px solid ${color}33">${escHtml(evt.artist_subgenre)}</span>` : ''}
+          </div>
+          <div class="event-venue-line">
+            ${flag ? `<span class="flag">${flag}</span>` : ''}${escHtml(venue || '—')}
+          </div>
+        </div>
+        <div class="event-right">
+          ${price ? `<div class="event-price">${escHtml(price)}</div>` : ''}
+          ${evt.url && evt.url !== '#' ? `<a href="${escHtml(evt.url)}" target="_blank" rel="noopener" class="ticket-btn btn-cta" onclick="event.stopPropagation()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Get Tickets</a>` : ''}
+        </div>
+      `;
+
+      // Hover → pulse globe pin
+      row.addEventListener('mouseenter', () => {
+        highlightedEventId = evt.event_id || idx;
+        row.classList.add('highlighted');
+        focusGlobeOnEvent(evt);
+      });
+
+      row.addEventListener('mouseleave', () => {
+        if (highlightedEventId === (evt.event_id || idx)) {
+          highlightedEventId = null;
+          row.classList.remove('highlighted');
+        }
+      });
+
+      // Click → focus globe
+      row.addEventListener('click', (e) => {
+        if (e.target.classList.contains('ticket-btn') || e.target.tagName === 'A') return;
+        focusGlobeOnEvent(evt);
+      });
+
+      fragment.appendChild(row);
+    });
+
+    container.appendChild(fragment);
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ─────────────────────────────────────────────
+  //  FILTER BAR
+  // ─────────────────────────────────────────────
+  function buildFilterBar() {
+    const bar = document.getElementById('filter-bar');
+    bar.innerHTML = '';
+
+    // Genre filters
+    const genreLabel = document.createElement('span');
+    genreLabel.className = 'filter-label';
+    genreLabel.textContent = 'Genre';
+    bar.appendChild(genreLabel);
+
+    const genreGroup = document.createElement('div');
+    genreGroup.className = 'pill-group';
+
+    const genres = ['all', ...Array.from(new Set(allEvents.map(e => e.artist_subgenre).filter(Boolean))).sort()];
+
+    genres.forEach(g => {
+      const pill = document.createElement('button');
+      pill.className = 'pill' + (g === activeGenre ? ' active' : '');
+      pill.dataset.genre = g;
+
+      if (g !== 'all') {
+        const dot = document.createElement('span');
+        dot.className = 'pill-dot';
+        dot.style.background = genreColor(g);
+        pill.appendChild(dot);
+      }
+
+      const label = document.createElement('span');
+      label.textContent = g === 'all' ? 'All' : g;
+      pill.appendChild(label);
+
+      pill.addEventListener('click', () => {
+        activeGenre = g;
+        bar.querySelectorAll('[data-genre]').forEach(p => {
+          p.classList.remove('active');
+          p.style.removeProperty('--genre-rgb');
+        });
+        pill.classList.add('active');
+        if (g !== 'all') {
+          const hex = genreColor(g).replace('#', '');
+          const r = parseInt(hex.slice(0,2),16), gr = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+          pill.style.setProperty('--genre-rgb', `${r},${gr},${b}`);
+        }
+        applyFilters();
+      });
+
+      genreGroup.appendChild(pill);
+    });
+
+    bar.appendChild(genreGroup);
+
+    // Divider
+    const div = document.createElement('div');
+    div.className = 'divider-v';
+    bar.appendChild(div);
+
+    // Date range filters
+    const rangeLabel = document.createElement('span');
+    rangeLabel.className = 'filter-label';
+    rangeLabel.textContent = 'When';
+    bar.appendChild(rangeLabel);
+
+    const rangeGroup = document.createElement('div');
+    rangeGroup.className = 'pill-group';
+
+    const ranges = [
+      { id: 'week',    label: 'Next week' },
+      { id: 'month',   label: 'Next month' },
+      { id: '3months', label: 'Next 3 months' },
+      { id: 'all',     label: 'All' },
+    ];
+
+    ranges.forEach(r => {
+      const pill = document.createElement('button');
+      pill.className = 'pill' + (r.id === activeRange ? ' active' : '');
+      pill.dataset.range = r.id;
+      pill.textContent = r.label;
+
+      pill.addEventListener('click', () => {
+        activeRange = r.id;
+        bar.querySelectorAll('[data-range]').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        applyFilters();
+      });
+
+      rangeGroup.appendChild(pill);
+    });
+
+    bar.appendChild(rangeGroup);
+  }
+
+  // ─────────────────────────────────────────────
+  //  GLOBE POINTS: cluster by location
+  // ─────────────────────────────────────────────
+  function buildGlobePoints() {
+    const locMap = {};
+
+    filteredEvents.forEach((evt, idx) => {
+      const lat = parseFloat(evt.latitude);
+      const lng = parseFloat(evt.longitude);
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      // Cluster key: round to 2 decimal places (~1km grid)
+      const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+      if (!locMap[key]) {
+        locMap[key] = {
+          lat, lng,
+          events: [],
+          subgenres: new Set(),
+          key,
+        };
+      }
+      locMap[key].events.push({ ...evt, _idx: idx });
+      locMap[key].subgenres.add(evt.artist_subgenre || '');
+    });
+
+    return Object.values(locMap).map(loc => {
+      // Pick dominant subgenre color
+      const counts = {};
+      loc.events.forEach(e => {
+        const g = e.artist_subgenre || '';
+        counts[g] = (counts[g] || 0) + 1;
+      });
+      const topGenre = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+
+      return {
+        ...loc,
+        count: loc.events.length,
+        color: genreColor(topGenre),
+        topGenre,
+      };
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  //  GLOBE INIT
+  // ─────────────────────────────────────────────
+  function initGlobe() {
+    const container = document.getElementById('globe-container');
+    const popup = document.getElementById('globe-popup');
+
+    globe = Globe()
+      .globeImageUrl('') // we use custom material
+      .backgroundColor('rgba(0,0,0,0)')
+
+      // Custom globe material
+      .onGlobeReady(() => {
+        globeReady = true;
+        updateGlobe();
+        startAutoRotate();
+        applyGlobeDarkAppearance();
+      })
+
+      // Dots (pins)
+      .pointsData([])
+      .pointLat('lat')
+      .pointLng('lng')
+      .pointColor('color')
+      .pointAltitude(d => Math.min(0.005 + d.count * 0.012, 0.08))
+      .pointRadius(d => Math.min(0.4 + d.count * 0.15, 1.2))
+      .pointResolution(8)
+      .pointsMerge(false)
+
+      // Popup on hover
+      .onPointHover((point, prevPoint, event) => {
+        if (point) {
+          showPopup(point, event);
+        } else {
+          hidePopup();
+        }
+      })
+
+      // Click → scroll event list
+      .onPointClick((point) => {
+        if (point && point.events && point.events.length > 0) {
+          const firstEvt = point.events[0];
+          scrollToEvent(firstEvt.event_id || firstEvt._idx);
+          stopAutoRotate();
+        }
+      })
+
+      (container);
+
+    // Apply dark globe atmosphere styling via globeEl()
+    requestAnimationFrame(() => {
+      const globeEl = globe.globeEl ? globe.globeEl() : null;
+      if (globeEl) {
+        globeEl.style.opacity = '0';
+        globeEl.animate([{opacity:0},{opacity:1}], {duration: 800, fill: 'forwards'});
+      }
+    });
+
+    // Globe appearance: dark sphere with glow
+    globe
+      .atmosphereColor('rgba(120, 80, 255, 0.4)')
+      .atmosphereAltitude(0.12);
+
+    // Custom globe hex colors
+    globe
+      .hexPolygonsData([])
+      .showGraticules(true)
+      .showAtmosphere(true);
+
+    // Style the canvas background
+    container.style.background = 'radial-gradient(ellipse at center, #0d0b1a 0%, #0a0a0a 70%)';
+
+    // Double-click → reset rotation
+    container.addEventListener('dblclick', () => {
+      globe.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 800);
+      startAutoRotate();
+    });
+
+    // Stop rotation on user drag
+    container.addEventListener('mousedown', stopAutoRotate);
+    container.addEventListener('touchstart', stopAutoRotate, { passive: true });
+
+    // Popup tracking
+    container.addEventListener('mousemove', (e) => {
+      if (popup.classList.contains('visible')) {
+        positionPopup(popup, e);
+      }
+    });
+  }
+
+  function updateGlobe() {
+    if (!globe || !globeReady) return;
+    const points = buildGlobePoints();
+    globe.pointsData(points);
+  }
+
+  // ─────────────────────────────────────────────
+  //  AUTO ROTATE
+  // ─────────────────────────────────────────────
+  function startAutoRotate() {
+    if (rotationTimer) return;
+    let angle = 0;
+    const pov = globe.pointOfView();
+    rotationTimer = setInterval(() => {
+      angle += 0.15;
+      globe.pointOfView({
+        lat: pov.lat || 20,
+        lng: (pov.lng || 0) + angle,
+        altitude: pov.altitude || 2.5,
+      });
+    }, 50);
+  }
+
+  function stopAutoRotate() {
+    if (rotationTimer) {
+      clearInterval(rotationTimer);
+      rotationTimer = null;
+    }
+  }
+
+  // ─────────────────────────────────────────────
+  //  POPUP
+  // ─────────────────────────────────────────────
+  function showPopup(point, mouseEvent) {
+    const popup = document.getElementById('globe-popup');
+    const color = point.color;
+    const events = point.events;
+
+    // Build popup content
+    const firstEvt = events[0];
+    const flag = countryFlag(firstEvt.country_code || '');
+    const venue = firstEvt.venue_name || '';
+    const city = [firstEvt.city, firstEvt.country].filter(Boolean).join(', ');
+
+    let eventsHtml = '';
+    const displayEvents = events.slice(0, 3);
+    displayEvents.forEach(e => {
+      const ticketLink = e.url && e.url !== '#'
+        ? ` · <a href="${escHtml(e.url)}" target="_blank" rel="noopener" style="color:inherit;opacity:0.6;font-size:10px;text-decoration:underline;text-underline-offset:2px;" onclick="event.stopPropagation()">Get your tickets</a>`
+        : '';
+      eventsHtml += `<div class="popup-meta-row">
+        <span class="popup-meta-icon">◉</span>
+        <span><strong style="color:${genreColor(e.artist_subgenre)}">${escHtml(e.searched_artist || e.name)}</strong> · ${escHtml(fmtDate(e.date))}${ticketLink}</span>
+      </div>`;
+    });
+
+    popup.innerHTML = `
+      <div class="popup-header">
+        <div class="popup-accent-bar" style="background:${color}"></div>
+        <div>
+          <div class="popup-title">${flag ? flag + ' ' : ''}${escHtml(venue || city)}</div>
+          <div class="popup-artist">${escHtml(city)}</div>
+        </div>
+      </div>
+      <div class="popup-meta">
+        ${eventsHtml}
+        ${events.length > 3 ? `<span class="popup-count-badge">+${events.length - 3} more event${events.length - 3 !== 1 ? 's' : ''}</span>` : ''}
+      </div>
+    `;
+
+    positionPopup(popup, mouseEvent);
+    popup.classList.add('visible');
+  }
+
+  function hidePopup() {
+    document.getElementById('globe-popup').classList.remove('visible');
+  }
+
+  function positionPopup(popup, e) {
+    const container = document.getElementById('globe-container');
+    const rect = container.getBoundingClientRect();
+    const relX = e.clientX - rect.left;
+    const relY = e.clientY - rect.top;
+
+    let left = relX + 14;
+    let top  = relY - 20;
+
+    // Keep within bounds
+    const pw = 280, ph = 160;
+    if (left + pw > rect.width - 10) left = relX - pw - 14;
+    if (top + ph > rect.height - 10) top = relY - ph + 20;
+    if (top < 5) top = 5;
+
+    popup.style.left = left + 'px';
+    popup.style.top  = top + 'px';
+  }
+
+  // ─────────────────────────────────────────────
+  //  FOCUS GLOBE ON EVENT
+  // ─────────────────────────────────────────────
+  function focusGlobeOnEvent(evt) {
+    if (!globe || !globeReady) return;
+    const lat = parseFloat(evt.latitude);
+    const lng = parseFloat(evt.longitude);
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    stopAutoRotate();
+    globe.pointOfView({ lat, lng, altitude: 1.4 }, 900);
+
+    // Resume rotation after a delay
+    setTimeout(startAutoRotate, 4000);
+  }
+
+  // ─────────────────────────────────────────────
+  //  SCROLL EVENT LIST TO EVENT
+  // ─────────────────────────────────────────────
+  function scrollToEvent(eventId) {
+    const row = document.querySelector(`[data-event-id="${eventId}"]`);
+    if (!row) return;
+
+    // Remove previous highlights
+    document.querySelectorAll('.event-row.highlighted').forEach(r => r.classList.remove('highlighted'));
+    row.classList.add('highlighted');
+
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Clear highlight after 2s
+    setTimeout(() => row.classList.remove('highlighted'), 2000);
+  }
+
+  // ─────────────────────────────────────────────
+  //  GLOBE DARK APPEARANCE (post-ready patch)
+  // ─────────────────────────────────────────────
+  function applyGlobeDarkAppearance() {
+    // Called after onGlobeReady fires — scene is guaranteed to exist
+    try {
+      const scene = globe.scene ? globe.scene() : null;
+      if (!scene) return;
+      scene.traverse(obj => {
+        if (obj.isMesh && obj.geometry && obj.geometry.type === 'SphereGeometry') {
+          if (obj.material) {
+            obj.material.color && obj.material.color.setHex(0x0a0a1a);
+            obj.material.emissive && obj.material.emissive.setHex(0x060614);
+            obj.material.emissiveIntensity = 0.3;
+          }
+        }
+      });
+    } catch (e) { /* silent — Three.js internals may vary */ }
+  }
+
+  // ─────────────────────────────────────────────
+  //  MAIN INIT
+  // ─────────────────────────────────────────────
+  async function init() {
+    const loading = document.getElementById('loading-bar');
+    loading.style.display = 'block';
+
+    try {
+      const res = await fetch('./data/concerts.json');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const raw = await res.json();
+
+      // Accept both array and wrapped format
+      allEvents = Array.isArray(raw) ? raw : (raw.sample_concerts || []);
+
+      // Deduplicate by event_id, then by date+venue+artist (ticket tiers)
+      const seenId = new Set();
+      allEvents = allEvents.filter(e => {
+        if (!e.event_id) return true;
+        if (seenId.has(e.event_id)) return false;
+        seenId.add(e.event_id);
+        return true;
+      });
+      const seenShow = new Set();
+      allEvents = allEvents.filter(e => {
+        const key = `${e.date}|${e.venue_name}|${e.searched_artist}`;
+        if (seenShow.has(key)) return false;
+        seenShow.add(key);
+        return true;
+      });
+
+      // Sort by date
+      allEvents.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    } catch (err) {
+      loadFailed = true;
+      const emptyEl = document.getElementById('list-empty');
+      emptyEl.style.display = 'flex';
+      document.getElementById('empty-msg').textContent = 'No concert data yet';
+      document.getElementById('empty-sub').style.display = 'block';
+      document.getElementById('empty-hint').style.display = 'block';
+      loading.style.display = 'none';
+      allEvents = [];
+    }
+
+    loading.style.display = 'none';
+
+    buildFilterBar();
+    filteredEvents = [...allEvents];
+    updateCount();
+    if (!loadFailed) renderList();
+
+    // Init globe — applyGlobeDarkAppearance fires inside onGlobeReady
+    initGlobe();
+  }
+
+  // Kick off
+  window.addEventListener('DOMContentLoaded', init);
+  </script>
+
+</body>
+</html>

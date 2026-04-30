@@ -1,0 +1,29 @@
+# OAuth credentials and tokens — NEVER commit these
+extract/client_secret.json
+extract/token.json
+extract/*.json
+
+# Generated personal data
+data/*.json
+!data/.gitkeep.json
+public/data/
+
+# Environment
+.env
+.env.local
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor
+.DS_Store
+.vscode/
+.idea/
+
+# Build artifacts
+node_modules/
+.vercel
+*.log
