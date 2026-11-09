@@ -1115,9 +1115,23 @@
 
     // Custom globe hex colors
     globe
-      .hexPolygonsData([])
       .showGraticules(true)
       .showAtmosphere(true);
+
+    // Land as hex dots, so pins sit on recognisable geography instead of a
+    // plain black sphere. Natural Earth 110m via world-atlas (public domain / ISC).
+    fetch('./assets/countries-110m.geojson')
+      .then(r => r.ok ? r.json() : null)
+      .then(geo => {
+        if (!geo) return;
+        globe
+          .hexPolygonsData(geo.features)
+          .hexPolygonResolution(3)
+          .hexPolygonMargin(0.25)
+          .hexPolygonAltitude(0.002)
+          .hexPolygonColor(() => '#4a4380');
+      })
+      .catch(() => { /* globe still works without land */ });
 
     // Style the canvas background
     container.style.background = 'radial-gradient(ellipse at center, #0d0b1a 0%, #0a0a0a 70%)';
@@ -1292,8 +1306,8 @@
       scene.traverse(obj => {
         if (obj.isMesh && obj.geometry && obj.geometry.type === 'SphereGeometry') {
           if (obj.material) {
-            obj.material.color && obj.material.color.setHex(0x0a0a1a);
-            obj.material.emissive && obj.material.emissive.setHex(0x060614);
+            obj.material.color && obj.material.color.setHex(0x0e0d22);
+            obj.material.emissive && obj.material.emissive.setHex(0x09081c);
             obj.material.emissiveIntensity = 0.3;
           }
         }
