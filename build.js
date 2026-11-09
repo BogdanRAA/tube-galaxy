@@ -20,3 +20,10 @@ for (const file of files) {
 }
 
 console.log(`Build complete: ${files.length} data files copied.`);
+
+// Public runtime config for the browser (a Google OAuth client ID is public by
+// design; secrets such as OPENROUTER_API_KEY stay server-side in /api).
+const config = { googleClientId: process.env.GOOGLE_CLIENT_ID || '' };
+fs.writeFileSync(path.join(__dirname, 'public', 'config.js'),
+  `window.TG_CONFIG = ${JSON.stringify(config)};\n`);
+console.log(`Wrote public/config.js (Google sign-in ${config.googleClientId ? 'enabled' : 'disabled: set GOOGLE_CLIENT_ID'}).`);

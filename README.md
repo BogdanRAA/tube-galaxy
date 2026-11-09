@@ -100,6 +100,32 @@ Open `http://localhost:8787/findings.html`.
 - **Depth.** `npm run index -- --max 1000` indexes deeper back catalogues; `--with-tags` adds video tags for better recall (doubles quota).
 - **Privacy.** The server binds to 127.0.0.1. `video_index.json` is never copied to `public/` or deployed. Findings are, so a deployed site shows them read-only.
 
+## Sign in with Google: live sync
+
+The deployed dashboard shows the subscriptions baked in at the last `npm run pipeline`. Sign in with Google and it pulls your **current** subscriptions straight from YouTube: new channels appear (sorted into niches by `/api/categorize`, or filed under **New** if that isn't configured), unsubscribed ones disappear, and a badge shows `+added −removed`. The result is cached in that browser.
+
+- The browser gets a short-lived, read-only token (`youtube.readonly`). It is held in memory only and never stored server-side.
+- `/api/categorize` checks your Google token and only answers for emails in `ALLOWED_EMAILS`, so nobody else can spend your model quota.
+- Sync costs about 1 YouTube quota unit per 50 subscriptions, plus 1 per new channel.
+
+**One-time setup**
+
+1. Google Cloud Console → APIs & Services → Credentials → **Create OAuth client ID → Web application**. Authorized JavaScript origins: your Vercel URL(s) and `http://localhost:8787`. (The extractor's existing *Desktop* client can't be used for this.)
+2. OAuth consent screen → add your Google account as a **test user** (the YouTube scope shows an "unverified app" notice until Google verifies the app; for personal use you click through it).
+3. Vercel → Project → Settings → Environment Variables:
+
+| Variable | Value |
+|---|---|
+| `GOOGLE_CLIENT_ID` | the Web client ID from step 1 |
+| `ALLOWED_EMAILS` | your Google email (comma-separate several) |
+| `OPENROUTER_API_KEY` | free key from openrouter.ai (niche-sorting new channels) |
+
+**Deploy** from the machine that has your `data/` (it's gitignored, so a GitHub-linked build would ship an empty site):
+
+```bash
+git pull && npm run build && vercel --prod
+```
+
 ## Customizing
 
 - **Niche taxonomy** — edit the prompt template in `extract/categorize.py`
