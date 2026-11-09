@@ -7,14 +7,16 @@ npm package: `npm pack earth-visualization`, then extract package/dist/textures)
   topography_2048x1024.png        elevation
   earth_landocean_4050x2025.png   land / ocean mask
 
-Outputs (public/assets/):
-  earth-toon.jpg   4096x2048 colour map: flat biome colour bands, cel-shaded
+Outputs (public/assets/), one colour map per theme:
+  earth-dark.jpg   dark violet / navy / carbon palette (what the globe uses)
+  earth-toon.jpg   bright cartoon palette
+  each 4096x2048: flat biome colour bands, cel-shaded
                    relief from real elevation, snowcaps, shallow-water rings,
                    ink coastlines.
   earth-bump.jpg   2048x1024 elevation, used as a bump map so ranges catch the
                    light as the globe turns.
 
-Usage: python3 bake_earth.py <textures_dir>
+Usage: python3 bake_earth.py <textures_dir> [dark|toon ...]   (default: both)
 """
 import sys
 from pathlib import Path
@@ -24,6 +26,7 @@ from PIL import Image, ImageFilter
 from scipy import ndimage
 
 SRC = Path(sys.argv[1] if len(sys.argv) > 1 else 'textures')
+THEMES = sys.argv[2:] or ['dark', 'toon']
 OUT = Path(__file__).resolve().parent.parent / 'public' / 'assets'
 W, H = 4096, 2048
 
@@ -46,18 +49,31 @@ land |= small
 # ─── 1. biome classes: nearest cartoon colour to the smoothed real colour ───
 # (real Blue Marble colour -> flat toon colour). Smoothing + a majority filter
 # turn noisy satellite pixels into clean cartoon blobs.
-BIOMES = [  # (typical Blue Marble RGB, cartoon RGB)
-    ((38, 58, 28), (46, 158, 79)),      # dense forest / rainforest
-    ((72, 92, 48), (92, 196, 84)),      # temperate forest, grassland
-    ((118, 118, 78), (178, 205, 98)),   # savanna, steppe
-    ((150, 132, 96), (214, 196, 120)),  # dry scrub
-    ((205, 172, 122), (246, 206, 118)), # sand desert
-    ((170, 100, 62), (234, 148, 92)),   # red desert (outback, Namib)
-    ((96, 86, 70), (164, 148, 110)),    # tundra, bare ground
-    ((235, 238, 242), (244, 250, 255)), # ice and snow
-]
-src = np.array([b[0] for b in BIOMES], np.float32)
-dst = np.array([b[1] for b in BIOMES], np.float32)
+# Typical Blue Marble colour of each biome (used to classify real pixels).
+BIOMES = ['forest', 'grass', 'savanna', 'scrub', 'desert', 'red_desert', 'tundra', 'ice']
+SRC_RGB = [(38, 58, 28), (72, 92, 48), (118, 118, 78), (150, 132, 96),
+           (205, 172, 122), (170, 100, 62), (96, 86, 70), (235, 238, 242)]
+
+PALETTES = {
+    # Dark violet / navy / carbon: matches the page's dark UI. Land differs by
+    # value and hue shift only, so biomes still read without going colourful.
+    'dark': dict(
+        biomes=[(36, 30, 84), (48, 38, 104), (60, 47, 118), (70, 55, 128),
+                (84, 66, 140), (90, 58, 128), (44, 40, 82), (82, 78, 138)],
+        rock=(96, 86, 150), snow=(176, 170, 228),
+        deep=(5, 7, 16), mid=(9, 14, 38), shallow=(20, 30, 80),
+        ink=(122, 104, 255), ink_width=1.6,
+        shade=(0.70, 1.0, 1.22)),
+    # Bright cartoon palette.
+    'toon': dict(
+        biomes=[(46, 158, 79), (92, 196, 84), (178, 205, 98), (214, 196, 120),
+                (246, 206, 118), (234, 148, 92), (164, 148, 110), (244, 250, 255)],
+        rock=(150, 128, 112), snow=(250, 252, 255),
+        deep=(26, 64, 170), mid=(36, 104, 222), shallow=(72, 196, 246),
+        ink=(16, 22, 58), ink_width=2.2,
+        shade=(0.74, 1.0, 1.14)),
+}
+src = np.array(SRC_RGB, np.float32)
 
 smooth = ndimage.uniform_filter(color, size=(9, 9, 1))
 best = np.full((H, W), np.inf, np.float32)
@@ -74,47 +90,43 @@ for i in range(len(BIOMES)):
     better = ci > best
     best[better], major[better] = ci[better], i
 label = major
-img = dst[label]
-
-# ─── 2. relief from real elevation ──────────────────────────────────────────
+# Theme-independent geometry, computed once.
 h = ndimage.gaussian_filter(topo, 1.8)
-# Rock and snow follow prominence (height above the surrounding land), not raw
-# altitude: Tibet is a high plateau, not an ice sheet.
-prom = h - ndimage.gaussian_filter(h, 24)
+prom = h - ndimage.gaussian_filter(h, 24)      # height above the surrounding land
 is_ice = (label == len(BIOMES) - 1)[..., None]
 rock = (np.clip((prom - 0.05) / 0.08, 0, 1) * np.clip((h - 0.35) / 0.15, 0, 1))[..., None] * ~is_ice
 snow = (np.clip((prom - 0.10) / 0.06, 0, 1) * np.clip((h - 0.55) / 0.1, 0, 1))[..., None]
-img = img * (1 - rock) + np.array([150, 128, 112], np.float32) * rock
-img = img * (1 - snow) + np.array([250, 252, 255], np.float32) * snow
-
-# cel-shaded hillshade: light from the north-west, quantised into 3 bands
 gy, gx = np.gradient(h * 60)
 shade = (-gx * 0.7 + gy * 0.7) / np.sqrt(1 + gx ** 2 + gy ** 2)
-bands = np.select([shade < -0.12, shade > 0.12], [0.74, 1.14], 1.0)[..., None]
-img = np.clip(img * bands, 0, 255)
-
-# ─── 3. stylised ocean: deep -> mid -> bright shallow ring at the coast ─────
-dist = ndimage.distance_transform_edt(~land)                 # px from nearest land
-inside = ndimage.distance_transform_edt(land)                # px from nearest water
-ramp = lambda x: np.clip(x, 0, 1)[..., None]                 # soft 2 px edges, no stair-steps
-deep, mid, shallow = (np.array(c, np.float32) for c in ([26, 64, 170], [36, 104, 222], [72, 196, 246]))
-ocean = deep + (mid - deep) * ramp((34 - dist) / 2.5)
-ocean = ocean + (shallow - ocean) * ramp((10 - dist) / 2.0)
-img = img * ramp(inside) + ocean * (1 - ramp(inside))        # anti-aliased shoreline
-
-# ─── 4. ink coastlines (soft-edged band straddling the shore) ───────────────
-ink = np.array([16, 22, 58], np.float32)
+dist = ndimage.distance_transform_edt(~land)    # px from nearest land
+inside = ndimage.distance_transform_edt(land)   # px from nearest water
 shore = np.minimum(np.where(land, inside, np.inf), np.where(~land, dist, np.inf))
-img = img + (ink - img) * ramp((2.2 - shore) / 1.2)
-
-# Polar seam rows: equirectangular poles are degenerate, keep them clean.
-img[:6] = img[6]
-img[-6:] = img[-7]
-
+ramp = lambda x: np.clip(x, 0, 1)[..., None]     # soft 2 px edges, no stair-steps
 OUT.mkdir(parents=True, exist_ok=True)
-out = Image.fromarray(img.astype(np.uint8)).filter(ImageFilter.SMOOTH)  # soften stair-steps
-out.save(OUT / 'earth-toon.jpg', quality=88, optimize=True, progressive=True)
 
+
+def render(name, P):
+    f = lambda c: np.array(c, np.float32)
+    img = np.array(P['biomes'], np.float32)[label]
+    img = img * (1 - rock) + f(P['rock']) * rock
+    img = img * (1 - snow) + f(P['snow']) * snow
+    lo, mid_, hi = P['shade']                    # cel-shaded hillshade, 3 bands, light from NW
+    img = np.clip(img * np.select([shade < -0.12, shade > 0.12], [lo, hi], mid_)[..., None], 0, 255)
+
+    ocean = f(P['deep']) + (f(P['mid']) - f(P['deep'])) * ramp((34 - dist) / 2.5)
+    ocean = ocean + (f(P['shallow']) - ocean) * ramp((10 - dist) / 2.0)
+    img = img * ramp(inside) + ocean * (1 - ramp(inside))
+    img = img + (f(P['ink']) - img) * ramp((P['ink_width'] - shore) / 1.2)
+
+    img[:6] = img[6]                             # degenerate polar rows
+    img[-6:] = img[-7]
+    out = Image.fromarray(img.astype(np.uint8)).filter(ImageFilter.SMOOTH)
+    out.save(OUT / name, quality=88, optimize=True, progressive=True)
+    print('wrote', OUT / name)
+
+
+for theme in THEMES:
+    render('earth-dark.jpg' if theme == 'dark' else 'earth-toon.jpg', PALETTES[theme])
 bump = Image.fromarray((np.clip(h, 0, 1) * 255).astype(np.uint8)).resize((2048, 1024), Image.LANCZOS)
 bump.save(OUT / 'earth-bump.jpg', quality=90, optimize=True)
-print('wrote', OUT / 'earth-toon.jpg', OUT / 'earth-bump.jpg')
+print('wrote', OUT / 'earth-bump.jpg')

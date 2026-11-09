@@ -23,14 +23,16 @@ const ramp = (() => {
 })();
 const toon = (color, extra = {}) => new THREE.MeshToonMaterial({ color, gradientMap: ramp, ...extra });
 const outlineMat = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide });
+// Dark palette to sit on earth-dark.jpg: scenery in deep teal / indigo,
+// wonders in moonlit lavender and stone, with a few warm accents so they read.
 const C = {
-  rock: toon(0x8b7d9e), rockDark: toon(0x6a5f80), snow: toon(0xffffff), pine: toon(0x2fbf71),
-  jungle: toon(0x3fe05a), jungleDark: toon(0x22a64a), trunk: toon(0x9a5b34), palm: toon(0x5ee36b),
-  cactus: toon(0x46c46a), sand: toon(0xf2c46d), ice: toon(0xd9f6ff), iceBlue: toon(0x9fe3ff),
-  whale: toon(0x3a6fd8), whaleBelly: toon(0xcfe2ff), stone: toon(0xd8c8a8), sandstone: toon(0xe8b866),
-  iron: toon(0x9a6a3a), copper: toon(0x58d6b0), gold: toon(0xffcf3a), white: toon(0xf6f3ff),
-  red: toon(0xe84a3a), redDome: toon(0xff5a6e), blueDome: toon(0x4a8cff), greenDome: toon(0x3fd48a),
-  steel: toon(0xb8c6e0), brick: toon(0xc9874f), grey: toon(0x8a90a8), roof: toon(0x3a3f5c),
+  rock: toon(0x5f5690), rockDark: toon(0x3e3768), snow: toon(0xc9c3f2), pine: toon(0x1f6f6a),
+  jungle: toon(0x2a8a74), jungleDark: toon(0x1c5f57), trunk: toon(0x4a3a5c), palm: toon(0x2f9a80),
+  cactus: toon(0x2c7d6e), sand: toon(0x7a68b0), ice: toon(0x8e88cf), iceBlue: toon(0x6f7fe0),
+  whale: toon(0x3b4fa8), whaleBelly: toon(0x8b95d8), stone: toon(0xa79cc8), sandstone: toon(0xb39ad0),
+  iron: toon(0x8a7fb8), copper: toon(0x5fb3a8), gold: toon(0xe6c26a), white: toon(0xd9d4f5),
+  red: toon(0xb0506a), redDome: toon(0xd0607e), blueDome: toon(0x5a6fe0), greenDome: toon(0x3fa88a),
+  steel: toon(0xa8b0d8), brick: toon(0x8e6a8a), grey: toon(0x6e6a96), roof: toon(0x2c2850),
 };
 
 function part(geo, mat, pos = [0, 0, 0], rot = [0, 0, 0], scale = [1, 1, 1], outline = true) {

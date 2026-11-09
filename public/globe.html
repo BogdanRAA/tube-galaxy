@@ -1054,7 +1054,7 @@
     const popup = document.getElementById('globe-popup');
 
     globe = Globe()
-      .globeImageUrl('./assets/earth-toon.jpg')   // cartoon Earth baked from NASA data (extract/bake_earth.py)
+      .globeImageUrl('./assets/earth-dark.jpg')   // dark-palette Earth baked from NASA data (extract/bake_earth.py); earth-toon.jpg = bright
       .bumpImageUrl('./assets/earth-bump.jpg')    // real elevation: ranges catch the light
       .backgroundColor('rgba(0,0,0,0)')
 
@@ -1115,8 +1115,8 @@
 
     // Globe appearance: dark sphere with glow
     globe
-      .atmosphereColor('#7cc8ff')
-      .atmosphereAltitude(0.16);
+      .atmosphereColor('#7a5cff')
+      .atmosphereAltitude(0.14);
 
     // Custom globe hex colors
     globe
