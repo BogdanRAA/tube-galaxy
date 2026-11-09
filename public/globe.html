@@ -1054,7 +1054,8 @@
     const popup = document.getElementById('globe-popup');
 
     globe = Globe()
-      .globeImageUrl('') // we use custom material
+      .globeImageUrl('./assets/earth-toon.jpg')   // cartoon Earth baked from NASA data (extract/bake_earth.py)
+      .bumpImageUrl('./assets/earth-bump.jpg')    // real elevation: ranges catch the light
       .backgroundColor('rgba(0,0,0,0)')
 
       // Custom globe material
@@ -1114,28 +1115,16 @@
 
     // Globe appearance: dark sphere with glow
     globe
-      .atmosphereColor('rgba(120, 80, 255, 0.4)')
-      .atmosphereAltitude(0.12);
+      .atmosphereColor('#7cc8ff')
+      .atmosphereAltitude(0.16);
 
     // Custom globe hex colors
     globe
-      .showGraticules(true)
+      .showGraticules(false)
       .showAtmosphere(true);
 
-    // Land as hex dots, so pins sit on recognisable geography instead of a
-    // plain black sphere. Natural Earth 110m via world-atlas (public domain / ISC).
-    fetch('./assets/countries-110m.geojson')
-      .then(r => r.ok ? r.json() : null)
-      .then(geo => {
-        if (!geo) return;
-        globe
-          .hexPolygonsData(geo.features)
-          .hexPolygonResolution(3)
-          .hexPolygonMargin(0.25)
-          .hexPolygonAltitude(0.002)
-          .hexPolygonColor(() => '#4a4380');
-      })
-      .catch(() => { /* globe still works without land */ });
+    // Land, relief and coastlines now come from the baked texture above.
+
 
     // Style the canvas background
     container.style.background = 'radial-gradient(ellipse at center, #0d0b1a 0%, #0a0a0a 70%)';
@@ -1303,20 +1292,13 @@
   //  GLOBE DARK APPEARANCE (post-ready patch)
   // ─────────────────────────────────────────────
   function applyGlobeDarkAppearance() {
-    // Called after onGlobeReady fires — scene is guaranteed to exist
+    // Keep the texture's own colours: flat-ish lighting suits the cel-shaded map.
     try {
-      const scene = globe.scene ? globe.scene() : null;
-      if (!scene) return;
-      scene.traverse(obj => {
-        if (obj.isMesh && obj.geometry && obj.geometry.type === 'SphereGeometry') {
-          if (obj.material) {
-            obj.material.color && obj.material.color.setHex(0x0e0d22);
-            obj.material.emissive && obj.material.emissive.setHex(0x09081c);
-            obj.material.emissiveIntensity = 0.3;
-          }
-        }
-      });
-    } catch (e) { /* silent — Three.js internals may vary */ }
+      const m = globe.globeMaterial();
+      m.bumpScale = 4;
+      m.shininess = 4;
+      m.specular && m.specular.setHex(0x111122);
+    } catch (e) { /* silent: three.js internals may vary */ }
   }
 
   // ─────────────────────────────────────────────

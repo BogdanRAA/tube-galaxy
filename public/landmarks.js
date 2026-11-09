@@ -1,6 +1,6 @@
-// Cartoon relief layer for the concert globe: mountain ranges, wonders of the
-// world at their real coordinates, and regional scenery (forests, jungle,
-// palms, cacti, dunes, ice, whales). Same toon look as orbit.js.
+// 3D layer on top of the baked cartoon Earth: wonders of the world at their
+// real coordinates and light regional scenery (forests, jungle, palms, cacti,
+// icebergs, whales). Terrain and relief live in the texture itself.
 //
 // Scenery is scattered with a seeded RNG (stable layout on every load) and
 // each candidate point is tested against the country polygons, so trees and
@@ -10,8 +10,8 @@ import * as THREE from 'https://unpkg.com/three@0.157.0/build/three.module.min.j
 
 const INK = 0x0b0820;
 const Y = new THREE.Vector3(0, 1, 0);
-const TREE = 1.4;               // scenery scale
-const WONDER = 1.3;             // landmark scale
+const TREE = 1.15;               // scenery scale
+const WONDER = 1.1;             // landmark scale
 
 // ─── materials ──────────────────────────────────────────────────────────────
 
@@ -36,14 +36,14 @@ const C = {
 function part(geo, mat, pos = [0, 0, 0], rot = [0, 0, 0], scale = [1, 1, 1], outline = true) {
   const g = new THREE.Group();
   g.add(new THREE.Mesh(geo, mat));
-  if (outline) { const o = new THREE.Mesh(geo, outlineMat); o.scale.setScalar(1.08); g.add(o); }
+  if (outline) { const o = new THREE.Mesh(geo, outlineMat); o.scale.setScalar(1.045); g.add(o); }
   g.position.set(...pos); g.rotation.set(...rot); g.scale.set(...scale);
   return g;
 }
 const box = (x, y, z) => new THREE.BoxGeometry(x, y, z);
-const cone = (r, h, s = 12) => new THREE.ConeGeometry(r, h, s);
-const cyl = (rt, rb, h, s = 12, open = false, t0 = 0, tl = Math.PI * 2) => new THREE.CylinderGeometry(rt, rb, h, s, 1, open, t0, tl);
-const sph = (r, ws = 14, hs = 10) => new THREE.SphereGeometry(r, ws, hs);
+const cone = (r, h, s = 28) => new THREE.ConeGeometry(r, h, s);
+const cyl = (rt, rb, h, s = 28, open = false, t0 = 0, tl = Math.PI * 2) => new THREE.CylinderGeometry(rt, rb, h, s, 1, open, t0, tl);
+const sph = (r, ws = 32, hs = 20) => new THREE.SphereGeometry(r, ws, hs);
 const onion = (r, mat, y) => {                    // onion dome: squashed sphere + spike
   const g = new THREE.Group();
   g.add(part(sph(r), mat, [0, y, 0], [0, 0, 0], [1, 1.15, 1]));
@@ -238,9 +238,6 @@ const KIT = {
   jungle: [[sph(0.9, 8, 6), C.jungle, [0, 1.4, 0]], [sph(0.6, 8, 6), C.jungleDark, [0.5, 1.1, 0.3]], [cyl(0.14, 0.18, 0.8, 5), C.trunk, [0, 0.4, 0]]],
   palm: [[cyl(0.1, 0.16, 2.2, 5), C.trunk, [0, 1.1, 0]], [cone(1.1, 0.5, 6), C.palm, [0, 2.3, 0]]],
   cactus: [[cyl(0.28, 0.28, 2, 7), C.cactus, [0, 1, 0]], [cyl(0.18, 0.18, 0.9, 6), C.cactus, [0.5, 1.2, 0]], [cyl(0.18, 0.18, 0.7, 6), C.cactus, [-0.5, 1.0, 0]]],
-  dune: [[sph(1.4, 10, 6), C.sand, [0, 0, 0], [1.4, 0.45, 0.9]]],
-  mountain: [[cone(1.7, 4.4, 6), C.rock, [0, 2.2, 0]], [cone(0.85, 2.2, 6), C.snow, [0, 3.3, 0]]],
-  peak: [[cone(1.3, 3.4, 5), C.ice, [0, 1.7, 0]], [cone(0.6, 1.4, 5), C.snow, [0, 2.7, 0]]],
   iceberg: [[cyl(0.7, 1.3, 1.2, 6), C.ice, [0, 0.3, 0]], [cone(0.7, 1.0, 6), C.iceBlue, [0.2, 1.3, 0]]],
 };
 
@@ -251,7 +248,7 @@ function instanced(kit, placements, root) {
     local.compose(new THREE.Vector3(...pos), new THREE.Quaternion(), new THREE.Vector3(...scl));
     const body = new THREE.InstancedMesh(geo, mat, placements.length);
     const line = new THREE.InstancedMesh(geo, outlineMat, placements.length);
-    const grow = new THREE.Matrix4().makeScale(1.1, 1.1, 1.1);
+    const grow = new THREE.Matrix4().makeScale(1.06, 1.06, 1.06);
     placements.forEach((pm, i) => {
       m4.multiplyMatrices(pm, local);
       body.setMatrixAt(i, m4);
@@ -306,33 +303,6 @@ function scatter(rand, isLand, boxes, n, { onLand = true, scale = [0.8, 1.3] } =
   return out;
 }
 
-function alongRange(rand, path, step = 1.4, jitter = 0.9) {
-  const out = [];
-  for (let i = 0; i < path.length - 1; i++) {
-    const [a1, o1] = path[i], [a2, o2] = path[i + 1];
-    const n = Math.max(1, Math.round(Math.hypot(a2 - a1, o2 - o1) / step));
-    for (let k = 0; k < n; k++) {
-      const t = k / n;
-      for (let c = 0; c < 2; c++) {                 // two staggered rows read as a range
-        out.push([a1 + (a2 - a1) * t + (rand() - 0.5) * jitter * 2, o1 + (o2 - o1) * t + (rand() - 0.5) * jitter * 2,
-          0.75 + rand() * 0.75, rand() * Math.PI * 2]);
-      }
-    }
-  }
-  return out;
-}
-
-const RANGES = {
-  Himalaya: [[35.5, 74], [34, 77], [31, 80], [29, 84], [28, 87], [27.8, 90], [28, 94]],
-  Andes: [[8, -73], [2, -77], [-5, -79], [-12, -76], [-17, -70], [-23, -68], [-30, -70], [-36, -71], [-42, -72], [-48, -73]],
-  Rockies: [[60, -128], [55, -122], [50, -116], [45, -112], [40, -106], [36, -106]],
-  Alps: [[44.5, 7], [46, 7.5], [46.5, 9.5], [47, 11.5], [47.2, 13.5]],
-  Atlas: [[31, -8], [32.5, -4], [34, 0], [35.5, 5]],
-  Urals: [[66, 62], [60, 59], [55, 59], [51, 58]],
-  Scandes: [[68, 17], [64, 13], [61, 9]],
-  Caucasus: [[43.5, 40], [42.8, 44], [41.5, 48]],
-};
-
 // ─── wire into globe.gl ─────────────────────────────────────────────────────
 
 function waitForGlobe() {
@@ -360,17 +330,13 @@ Promise.all([waitForGlobe(), fetch('./assets/countries-110m.geojson').then(r => 
   };
   const place = (list, k = 1) => list.map(([lat, lng, s, rot]) => placeMatrix(lat, lng, s * k, rot));
 
-  // Relief
-  instanced(KIT.mountain, place(Object.values(RANGES).flatMap(r => alongRange(rand, r))
-    .concat([[-3.07, 37.35, 1.6, 0], [63.07, -151, 1.5, 1], [-0.68, 29.87, 1.1, 2]])), root);
-  instanced(KIT.peak, place(scatter(rand, isLand, [[64, 80, -52, -24]], 45, { scale: [0.8, 1.4] })), root);
+  // Mountains, ice caps and deserts are in the baked texture (real elevation).
 
   // Biomes
-  instanced(KIT.pine, place(scatter(rand, isLand, [[50, 62, -125, -65], [56, 68, 60, 140], [59, 68, 10, 30], [56, 64, 30, 60]], 230, { scale: [0.7, 1.1] }), TREE), root);
-  instanced(KIT.jungle, place(scatter(rand, isLand, [[-12, 2, -75, -50], [-5, 4, 12, 28], [-3, 4, 100, 118], [-8, -2, 136, 148]], 190, { scale: [0.8, 1.2] }), TREE), root);
-  instanced(KIT.palm, place(scatter(rand, isLand, [[15, 27, -90, -75], [5, 15, 98, 106], [8, 15, 74, 80], [-12, -3, -40, -35], [-18, -12, 125, 145], [18, 23, -160, -154]], 90, { scale: [0.8, 1.2] }), TREE), root);
-  instanced(KIT.cactus, place(scatter(rand, isLand, [[24, 36, -116, -103], [-28, -20, -71, -66]], 55, { scale: [0.7, 1.1] }), TREE), root);
-  instanced(KIT.dune, place(scatter(rand, isLand, [[18, 30, -10, 30], [18, 28, 44, 55], [-30, -20, 120, 140], [-26, -18, 15, 22]], 120, { scale: [0.8, 1.4] })), root);
+  instanced(KIT.pine, place(scatter(rand, isLand, [[50, 62, -125, -65], [56, 68, 60, 140], [59, 68, 10, 30], [56, 64, 30, 60]], 110, { scale: [0.7, 1.1] }), TREE), root);
+  instanced(KIT.jungle, place(scatter(rand, isLand, [[-12, 2, -75, -50], [-5, 4, 12, 28], [-3, 4, 100, 118], [-8, -2, 136, 148]], 90, { scale: [0.8, 1.2] }), TREE), root);
+  instanced(KIT.palm, place(scatter(rand, isLand, [[15, 27, -90, -75], [5, 15, 98, 106], [8, 15, 74, 80], [-12, -3, -40, -35], [-18, -12, 125, 145], [18, 23, -160, -154]], 50, { scale: [0.8, 1.2] }), TREE), root);
+  instanced(KIT.cactus, place(scatter(rand, isLand, [[24, 36, -116, -103], [-28, -20, -71, -66]], 30, { scale: [0.7, 1.1] }), TREE), root);
   instanced(KIT.iceberg, place(scatter(rand, isLand, [[68, 80, -70, 40], [-62, -55, -70, 30]], 22, { onLand: false, scale: [0.8, 1.4] })), root);
 
   // Whales: bob and spout in open water

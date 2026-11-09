@@ -11,7 +11,7 @@ import * as THREE from 'https://unpkg.com/three@0.157.0/build/three.module.min.j
 
 const R = 100;                 // globe.gl's globe radius in scene units
 const INK = 0x0b0820;          // outline colour
-const SIZE = 2.1;              // global satellite scale: readable at the default zoom
+const SIZE = 0.85;             // global satellite scale
 const SPEED = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0.15 : 1;
 
 // ─── materials ──────────────────────────────────────────────────────────────

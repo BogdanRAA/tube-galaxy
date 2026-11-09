@@ -104,6 +104,7 @@ Open `http://localhost:8787/findings.html`.
 
 - **Niche taxonomy** — edit the prompt template in `extract/categorize.py`
 - **Music subgenre palette** — CSS variables in `public/globe.html`
+- **Globe look** — the cartoon Earth is baked from public-domain NASA imagery by `extract/bake_earth.py` (biome palette, snowline, ocean bands are all tunable there); wonders and scenery live in `public/landmarks.js`, satellites and stars in `public/orbit.js`
 - **Concert sources** — add Spotify Concerts API or RA.co scraping in `concerts.py`
 - **Layout** — the three HTML files are self-contained, no framework
 
