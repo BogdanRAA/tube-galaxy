@@ -755,8 +755,12 @@
   let loadFailed = false;
   let globe = null;
   let globeReady = false;
-  let rotationTimer = null;
-  let userInteracting = false;
+  let resumeTimer = null;        // single pending "resume auto-rotate" timer
+  let focusTimer = null;         // debounce for list-row hover focus
+  let userInteracting = false;   // pointer held on the globe
+  let lastMouse = null;          // globe.gl's onPointHover passes no mouse event
+  const HOME_ALT = 2.5;
+  const RESUME_AFTER_MS = 5000;
   let highlightedEventId = null;
 
   // ─────────────────────────────────────────────
@@ -868,10 +872,12 @@
       row.addEventListener('mouseenter', () => {
         highlightedEventId = evt.event_id || idx;
         row.classList.add('highlighted');
-        focusGlobeOnEvent(evt);
+        clearTimeout(focusTimer);
+        focusTimer = setTimeout(() => focusGlobeOnEvent(evt), 180);
       });
 
       row.addEventListener('mouseleave', () => {
+        clearTimeout(focusTimer);
         if (highlightedEventId === (evt.event_id || idx)) {
           highlightedEventId = null;
           row.classList.remove('highlighted');
@@ -1066,9 +1072,10 @@
       .pointsMerge(false)
 
       // Popup on hover
-      .onPointHover((point, prevPoint, event) => {
-        if (point) {
-          showPopup(point, event);
+      .onPointHover((point) => {
+        container.style.cursor = point ? 'pointer' : '';
+        if (point && lastMouse) {
+          showPopup(point, lastMouse);
         } else {
           hidePopup();
         }
@@ -1080,10 +1087,17 @@
           const firstEvt = point.events[0];
           scrollToEvent(firstEvt.event_id || firstEvt._idx);
           stopAutoRotate();
+          scheduleResume();
         }
       })
 
       (container);
+
+    // Fit the canvas to the container (globe.gl defaults to window size, which
+    // pushed the globe off-centre on desktop and off-screen on mobile).
+    const fit = () => globe.width(container.clientWidth).height(container.clientHeight);
+    fit();
+    new ResizeObserver(fit).observe(container);
 
     // Apply dark globe atmosphere styling via globeEl()
     requestAnimationFrame(() => {
@@ -1110,16 +1124,20 @@
 
     // Double-click → reset rotation
     container.addEventListener('dblclick', () => {
-      globe.pointOfView({ lat: 20, lng: 0, altitude: 2.5 }, 800);
+      clearTimeout(resumeTimer);
+      globe.pointOfView({ lat: 20, lng: 0, altitude: HOME_ALT }, 800);
       startAutoRotate();
     });
 
-    // Stop rotation on user drag
-    container.addEventListener('mousedown', stopAutoRotate);
-    container.addEventListener('touchstart', stopAutoRotate, { passive: true });
+    // Any user gesture (drag, wheel zoom, pinch) pauses rotation; it resumes
+    // only after the user has let go and been idle for a while.
+    const controls = globe.controls();
+    controls.addEventListener('start', () => { userInteracting = true; stopAutoRotate(); });
+    controls.addEventListener('end', () => { userInteracting = false; scheduleResume(); });
 
     // Popup tracking
     container.addEventListener('mousemove', (e) => {
+      lastMouse = { clientX: e.clientX, clientY: e.clientY };
       if (popup.classList.contains('visible')) {
         positionPopup(popup, e);
       }
@@ -1135,25 +1153,33 @@
   // ─────────────────────────────────────────────
   //  AUTO ROTATE
   // ─────────────────────────────────────────────
+  // Uses OrbitControls' own autoRotate: frame-synced (no 20fps stepping) and it
+  // never overwrites the camera, so zoom, drag and pointOfView tweens all work
+  // while it runs. The old setInterval reset the camera every 50ms.
   function startAutoRotate() {
-    if (rotationTimer) return;
-    let angle = 0;
-    const pov = globe.pointOfView();
-    rotationTimer = setInterval(() => {
-      angle += 0.15;
-      globe.pointOfView({
-        lat: pov.lat || 20,
-        lng: (pov.lng || 0) + angle,
-        altitude: pov.altitude || 2.5,
-      });
-    }, 50);
+    if (!globe || userInteracting) return;
+    const c = globe.controls();
+    c.autoRotate = true;
+    c.autoRotateSpeed = 0.5;
   }
 
   function stopAutoRotate() {
-    if (rotationTimer) {
-      clearInterval(rotationTimer);
-      rotationTimer = null;
-    }
+    clearTimeout(resumeTimer);
+    if (globe) globe.controls().autoRotate = false;
+  }
+
+  function scheduleResume(delay = RESUME_AFTER_MS) {
+    clearTimeout(resumeTimer);
+    resumeTimer = setTimeout(() => {
+      if (userInteracting) return;
+      const p = globe.pointOfView();
+      if (p.altitude < HOME_ALT - 0.05) {   // zoomed in on a show: ease back out first
+        globe.pointOfView({ lat: p.lat, lng: p.lng, altitude: HOME_ALT }, 1200);
+        resumeTimer = setTimeout(startAutoRotate, 1200);
+      } else {
+        startAutoRotate();
+      }
+    }, delay);
   }
 
   // ─────────────────────────────────────────────
@@ -1232,11 +1258,10 @@
     const lng = parseFloat(evt.longitude);
     if (isNaN(lat) || isNaN(lng)) return;
 
+    if (userInteracting) return;   // never yank the camera out of the user's hand
     stopAutoRotate();
     globe.pointOfView({ lat, lng, altitude: 1.4 }, 900);
-
-    // Resume rotation after a delay
-    setTimeout(startAutoRotate, 4000);
+    scheduleResume();
   }
 
   // ─────────────────────────────────────────────
