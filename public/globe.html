@@ -709,6 +709,14 @@
     'Drum & Bass': '#ff6e40',
   };
 
+  const PIN_OPACITY = 0.55;
+  function withAlpha(hex, a) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return hex;
+    const n = parseInt(m[1], 16);
+    return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+
   function genreColor(g) {
     if (!g) return '#607d8b';
     for (const [k, v] of Object.entries(SUBGENRE_COLORS)) {
@@ -1070,7 +1078,7 @@
       .pointsData([])
       .pointLat('lat')
       .pointLng('lng')
-      .pointColor('color')
+      .pointColor(d => withAlpha(d.color, PIN_OPACITY))  // same genre colours, see-through
       .pointAltitude(d => Math.min(0.005 + d.count * 0.012, 0.08))
       .pointRadius(d => Math.min(0.4 + d.count * 0.15, 1.2))
       .pointResolution(8)
