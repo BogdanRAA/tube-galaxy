@@ -16,6 +16,9 @@
   const YT = 'https://www.googleapis.com/youtube/v3';
   let token = null;
   let baseChannels = null;     // the baked list, kept so a re-sync diffs against it
+  // Snapshot the sidebar markup now: with no baked data, index.html replaces it
+  // with a "No data" message, and a sync must be able to rebuild it.
+  const sidebarHTML = document.getElementById('sidebar')?.innerHTML || '';
 
   const store = {
     get() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch { return null; } },
@@ -55,7 +58,7 @@
     if (state.user) {
       slot.innerHTML = `${badge}
         <span class="tg-user">${state.user.picture ? `<img src="${esc(state.user.picture)}" alt="">` : ''}${esc(state.user.given_name || state.user.email)}</span>
-        <button class="tg-btn ghost" id="tgSync">${state.busy ? 'Syncing…' : 'Sync now'}</button>
+        <button class="tg-btn ghost" id="tgSync">${state.busy ? (typeof state.busy === 'string' ? state.busy : 'Syncing…') : 'Sync now'}</button>
         <button class="tg-btn ghost" id="tgOut">Sign out</button>`;
       slot.querySelector('#tgSync').onclick = () => sync();
       slot.querySelector('#tgSync').disabled = !!state.busy;
@@ -153,18 +156,31 @@
     return out;
   }
 
-  async function categorize(channels) {
-    if (!channels.length) return {};
-    try {
-      const r = await fetch('/api/categorize', { method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ channels: channels.map(c => ({ channel_id: c.channel_id, title: c.title, description: c.description })) }) });
-      if (!r.ok) throw new Error(r.status);
-      return Object.fromEntries((await r.json()).results.map(x => [x.channel_id, x]));
-    } catch (e) {
-      console.info('[sync] categorizer unavailable, filing new channels under "New":', e.message);
-      return {};
-    }
+  // Niche-sort in batches of 25 (one model call each, well inside the function
+  // time limit), 3 in flight. A batch that fails just stays under "New".
+  async function categorize(channels, onProgress) {
+    const out = {};
+    const batches = [];
+    for (let i = 0; i < channels.length; i += 25) batches.push(channels.slice(i, i + 25));
+    let done = 0, stop = false;
+    const worker = async () => {
+      while (batches.length && !stop) {
+        const b = batches.shift();
+        try {
+          const r = await fetch('/api/categorize', { method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ channels: b.map(c => ({ channel_id: c.channel_id, title: c.title, description: c.description })) }) });
+          if (r.status === 501 || r.status === 403) { stop = true; throw new Error(r.status); }  // not configured / not allowed
+          if (!r.ok) throw new Error(r.status);
+          for (const x of (await r.json()).results) out[x.channel_id] = x;
+        } catch (e) {
+          console.info('[sync] categorize batch skipped:', e.message);
+        }
+        onProgress && onProgress(++done);
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    return out;
   }
 
   // ── Sync + merge ──────────────────────────────────────────────────────────
@@ -180,12 +196,24 @@
       const fresh = live.filter(c => !known.has(c.channel_id));
       const removed = base.filter(c => !liveIds.has(c.channel_id)).map(c => c.channel_id);
 
-      const [details, latest, cats] = await Promise.all([
-        fetchDetails(fresh.map(c => c.channel_id)), fetchLatest(fresh.map(c => c.channel_id)), categorize(fresh)]);
-      const added = fresh.map(c => ({ ...c, ...(details[c.channel_id] || {}),
-        niche: cats[c.channel_id]?.niche || 'New',
-        is_music_artist: !!cats[c.channel_id]?.is_music_artist,
-        subgenre: cats[c.channel_id]?.subgenre || null, _new: true }));
+      // Reuse what an earlier sync already learned: sorted niches and fetched uploads.
+      const prev = store.get() || {};
+      const prevById = Object.fromEntries((prev.added || []).map(c => [c.channel_id, c]));
+      const prevLatest = prev.latest || {};
+      const needCat = fresh.filter(c => !prevById[c.channel_id] || prevById[c.channel_id].niche === 'New');
+      const needVids = fresh.filter(c => !prevLatest[c.channel_id]).map(c => c.channel_id);
+      const progress = n => renderAuth({ user: u, busy: `Sorting ${Math.min(n * 25, needCat.length)}/${needCat.length}` });
+
+      const [details, newLatest, cats] = await Promise.all([
+        fetchDetails(fresh.map(c => c.channel_id)), fetchLatest(needVids), categorize(needCat, progress)]);
+      const latest = { ...prevLatest, ...newLatest };
+      for (const id of Object.keys(latest)) if (!liveIds.has(id)) delete latest[id];
+      const added = fresh.map(c => {
+        const old = prevById[c.channel_id] || {};
+        const cat = cats[c.channel_id] || (old.niche && old.niche !== 'New' ? old : {});
+        return { ...c, ...(details[c.channel_id] || {}), niche: cat.niche || 'New',
+          is_music_artist: !!cat.is_music_artist, subgenre: cat.subgenre || null, _new: true };
+      });
 
       const cache = { synced_at: new Date().toISOString(), added, removed, latest };
       store.set(cache);
@@ -204,6 +232,9 @@
   }
 
   function applyChannels(list, extraVideos) {
+    // Rebuild the sidebar if index.html replaced it with its "No data" message.
+    const sb = document.getElementById('sidebar');
+    if (sb && !document.getElementById('nicheList') && sidebarHTML) sb.innerHTML = sidebarHTML;
     // Universe page globals (top-level lets in index.html's script).
     allChannels = list;
     latestVideos = { ...latestVideos, ...extraVideos };
@@ -221,8 +252,10 @@
   }
 
   // Wait for index.html to finish its own load, then layer any cached sync on top.
+  // Ready once index.html's loader has finished, whether or not data was baked in.
   const wait = setInterval(() => {
-    if (typeof allChannels === 'undefined' || !allChannels.length) return;
+    const loaded = document.getElementById('loadingOverlay')?.classList.contains('hidden');
+    if (typeof allChannels === 'undefined' || (!allChannels.length && !loaded)) return;
     clearInterval(wait);
     baseChannels = allChannels.slice();
     const cache = store.get();
