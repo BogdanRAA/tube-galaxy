@@ -8,6 +8,8 @@
     "extract": "cd extract && python3 youtube_extract.py",
     "categorize": "cd extract && python3 categorize.py",
     "concerts": "cd extract && python3 concerts.py",
-    "pipeline": "npm run extract && npm run categorize && npm run concerts && npm run build"
+    "pipeline": "npm run extract && npm run categorize && npm run concerts && npm run index && npm run build",
+    "index": "cd extract && python3 index_videos.py",
+    "agent": "python3 agent/server.py"
   }
 }

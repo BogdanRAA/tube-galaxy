@@ -4,7 +4,7 @@
 
 Self-host an actual map of your YouTube subscriptions. Niche-classified channels, music artists tagged by subgenre, and a 3D globe pinning every concert near you.
 
-[**Live demo (mine)**](https://youtube-dashboard-chi-swart.vercel.app) · [**Landing page**](https://tube-galaxy.vercel.app) · [Maker](https://github.com/BogdanAlRa)
+[**Live demo (mine)**](https://youtube-dashboard-chi-swart.vercel.app) · [**Landing page**](https://tube-galaxy.vercel.app) · [Maker](https://github.com/BogdanRAA)
 
 ---
 
@@ -23,7 +23,7 @@ All your data, your machine, your keys. No SaaS. No telemetry. MIT licensed.
 ### 1. Clone
 
 ```bash
-git clone https://github.com/BogdanAlRa/tube-galaxy.git
+git clone https://github.com/BogdanRAA/tube-galaxy.git
 cd tube-galaxy
 ```
 
@@ -66,15 +66,39 @@ Or deploy to Vercel:
 vercel --prod
 ```
 
-## Five steps, one Python script each
+## The pipeline
 
 | # | Script | What it does | Output |
 |---|---|---|---|
 | 1 | `extract/youtube_extract.py` | OAuth via Google API client. Pulls subs, playlists, liked videos. UC→UU playlist trick = 1 quota unit per channel for latest videos. | `data/subscriptions.json`, `data/playlists.json`, `data/liked_videos.json`, `data/channel_details.json` |
 | 2 | `extract/categorize.py` | Sends each channel's name + description + recent video titles to Gemini 2.5 Flash. Batches of 12, 5s throttle. Tags niches + subgenres. | `data/categorized_subscriptions.json`, `data/niche_summary.json`, `data/music_artists.json` |
 | 3 | `extract/concerts.py` | For each music artist, queries Ticketmaster Discovery + Bandsintown public endpoint. Geocodes venues. | `data/concerts.json` |
-| 4 | `build.js` | Copies all `data/*.json` to `public/data/`. | `public/data/*.json` |
-| 5 | `public/{index,music,globe}.html` | Static HTML. Reads JSON at runtime. No backend. | Live in browser |
+| 4 | `extract/index_videos.py` | Indexes videos from every subscribed channel for the agent. Incremental, quota-checkpointed. | `data/video_index.json` (local only) |
+| 5 | `build.js` | Copies `data/*.json` to `public/data/` (skips the index). | `public/data/*.json` |
+| 6 | `public/{index,music,globe,findings}.html` | Static HTML. Reads JSON at runtime. `findings.html` talks to the local agent when it's running. | Live in browser |
+
+## The agent: search inside your own subscriptions
+
+Ask in plain language ("vlogs of people going through Amazonian forests") and a local agent finds matching videos **only from channels you subscribe to**. Each request becomes its own tab under **Findings**. If your subs don't hold it, the agent says so instead of padding results, shows the nearest misses, and links a YouTube-wide search.
+
+How one request runs:
+
+1. **Decompose.** The model splits the request into concept groups with synonyms and other-language terms (rainforest, selva, floresta amazônica, Iquitos...) plus exclusions for false friends (Amazon Prime, Echo).
+2. **Retrieve.** Keyword scoring over your local video index: title beats tags beats description, with a small boost when the channel itself is on-topic.
+3. **Verify.** The model judges the top 60 candidates against your intent (0-3, one-line reason). Keyword hits are not answers.
+4. **Report.** Found, thin, or not in your subs.
+
+```bash
+npm run index    # one-time: index your subs' videos (~1 quota unit per 50 videos; re-runs are incremental)
+export OPENROUTER_API_KEY=sk-or-...   # free key at openrouter.ai
+npm run agent    # serves the dashboard + agent on http://localhost:8787
+```
+
+Open `http://localhost:8787/findings.html`.
+
+- **Model.** Defaults to a free NVIDIA Nemotron model on OpenRouter. The agent reads OpenRouter's live model list and falls back through the free `nvidia/*:free` models, since free IDs change. Pin one with `OPENROUTER_MODEL=...`. `GOOGLE_API_KEY` (Gemini) works too. With no key it falls back to plain keyword matching and marks findings unverified.
+- **Depth.** `npm run index -- --max 1000` indexes deeper back catalogues; `--with-tags` adds video tags for better recall (doubles quota).
+- **Privacy.** The server binds to 127.0.0.1. `video_index.json` is never copied to `public/` or deployed. Findings are, so a deployed site shows them read-only.
 
 ## Customizing
 
@@ -106,4 +130,4 @@ MIT — see [LICENSE](./LICENSE).
 
 ## Maker
 
-Built by [Bogdan](https://github.com/BogdanAlRa). Two more tools: [Tab Orbit](https://tab-orbit.vercel.app) (auto-organize Chrome tabs, free extension) and [Meta Ad Analyzer](https://meta-ad-analyzer-eight.vercel.app) (Apify actor that decomposes competitor video ads, $0.20/video).
+Built by [Bogdan](https://github.com/BogdanRAA). Two more tools: [Tab Orbit](https://tab-orbit.vercel.app) (auto-organize Chrome tabs, free extension) and [Meta Ad Analyzer](https://meta-ad-analyzer-eight.vercel.app) (Apify actor that decomposes competitor video ads, $0.20/video).

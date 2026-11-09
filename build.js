@@ -11,7 +11,9 @@ if (!fs.existsSync(publicDataDir)) {
 }
 
 // Copy all JSON files from data/ to public/data/
-const files = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
+// video_index.json is the agent's private search index: large, local-only, never deployed.
+const LOCAL_ONLY = new Set(['video_index.json']);
+const files = fs.readdirSync(dataDir).filter(f => f.endsWith('.json') && !LOCAL_ONLY.has(f));
 for (const file of files) {
   fs.copyFileSync(path.join(dataDir, file), path.join(publicDataDir, file));
   console.log(`Copied ${file} to public/data/`);
